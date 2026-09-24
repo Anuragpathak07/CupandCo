@@ -1,47 +1,68 @@
 export const colors = {
   // Brand palette
-  deepNavy: "#071426",
-  coffeeNavy: "#0B1730",
-  champagneGold: "#D9B65D",
-  warmGold: "#E8C76A",
-  cream: "#F8F5EE",
+  deepNavy: "#1C1C1E",
+  coffeeNavy: "#1C1C1E",
+  champagneGold: "#C5A059",
+  warmGold: "#C5A059",
+  cream: "#FAF9F5",
   white: "#FFFFFF",
-  charcoal: "#1A1A1A",
-  mutedGray: "#77736C",
+  charcoal: "#1C1C1E",
+  mutedGray: "#706F6E",
 
-  // Semantic & UI Token Aliases
-  background: "#F8F5EE",
-  canvas: "#F8F5EE",
+  // Core Surface & Canvas Tokens
+  canvas: "#FAF9F5",
+  background: "#FAF9F5",
   surface: "#FFFFFF",
-  primary: "#0B1730",
-  accent: "#D9B65D",
-  accentSoft: "rgba(217, 182, 93, 0.15)",
-  accentDark: "#B8943D",
-  ink: "#071426",
-  inkSecondary: "#525966",
-  inkTertiary: "#8C929E",
-  textPrimary: "#071426",
-  textSecondary: "#77736C",
+  secondarySurface: "#F2F1EC",
+  surfaceMuted: "#F2F1EC",
+  surfacePressed: "#E8E7E2",
+
+  // Typography & Content
+  ink: "#1C1C1E",
+  inkSecondary: "#6E6E73",
+  inkTertiary: "#98989D",
+  textPrimary: "#1C1C1E",
+  textSecondary: "#6E6E73",
+
+  // Accent (Muted desaturated gold)
+  accent: "#C5A059",
+  accentSoft: "rgba(197, 160, 89, 0.12)",
+  accentDark: "#A88438",
+  primary: "#1C1C1E",
+
+  // Borders & Separators
   border: "#E5E5EA",
-  success: "#34C759",
+  borderSubtle: "rgba(0, 0, 0, 0.05)",
+  borderStrong: "#D1D1D6",
+
+  // Semantic Pills & Badges
   completed: "#34C759",
   completedSoft: "rgba(52, 199, 89, 0.12)",
-  progress: "#007AFF",
+  completedText: "#248A3D",
+
   pending: "#FF9500",
-  cancelled: "#FF3B30",
-  surfaceMuted: "#F2F2F7",
-  surfacePressed: "#E8E8ED",
-  borderStrong: "#D1D1D6",
   pendingSoft: "rgba(255, 149, 0, 0.12)",
-  progressSoft: "rgba(0, 122, 255, 0.10)",
+  pendingText: "#C67600",
+
+  progress: "#007AFF",
+  progressSoft: "rgba(0, 122, 255, 0.12)",
+  progressText: "#0051A8",
+
+  cancelled: "#FF3B30",
   cancelledSoft: "rgba(255, 59, 48, 0.10)",
-  overlay: "rgba(7, 20, 38, 0.48)",
-  black: "#000000",
-  shadow: "rgba(7, 20, 38, 0.12)",
-  warning: "#FFCC00",
+  cancelledText: "#D70015",
+
+  success: "#34C759",
+  warning: "#FF9500",
   error: "#FF3B30",
   danger: "#FF3B30",
-  scrim: "rgba(248, 245, 238, 0.95)",
+
+  // Layering & Transparency
+  overlay: "rgba(0, 0, 0, 0.40)",
+  scrim: "rgba(250, 249, 245, 0.82)",
+  frostedGlass: "rgba(255, 255, 255, 0.76)",
+  black: "#000000",
+  shadow: "rgba(0, 0, 0, 0.06)",
 };
 
 export type ColorToken = keyof typeof colors;

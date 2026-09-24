@@ -13,6 +13,7 @@ import {
   RotateCcw,
   ShieldCheck,
   ShoppingBag,
+  SwitchCamera,
   UtensilsCrossed,
   Wifi,
   Wrench,
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react-native';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
+import { Badge } from '@/components/ui/Badge';
 import { SheetModal } from '@/components/ui/SheetModal';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Screen } from '@/components/ui/Screen';
@@ -75,6 +77,7 @@ export default function SettingsScreen() {
     .join('')
     .toUpperCase();
   const currentRole = roleOptions.find((option) => option.role === user.role) ?? roleOptions[0];
+  const isManagerOrOwner = user.role === 'MANAGER' || user.role === 'OWNER';
 
   const switchRole = async (role: Role) => {
     if (role === user.role && dataMode === 'mock') {
@@ -115,6 +118,7 @@ export default function SettingsScreen() {
     <Screen includeTopInset={false}>
       <PageHeader eyebrow="SYSTEM" title="Settings" />
 
+      {/* Profile Card */}
       <View style={styles.profileCard}>
         <View style={styles.avatar}><Text style={styles.avatarText}>{initials}</Text></View>
         <View style={styles.profileCopy}>
@@ -125,7 +129,7 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.groups}>
-        <SettingsGroup title="Workspace">
+        <SettingsGroup title="WORKSPACE">
           <SettingsRow
             label="Current role"
             description="Controls navigation and available actions"
@@ -136,7 +140,7 @@ export default function SettingsScreen() {
           />
         </SettingsGroup>
 
-        <SettingsGroup title="Devices">
+        <SettingsGroup title="DEVICES">
           <SettingsRow
             label="Haptic feedback"
             description="Tactile feedback on supported devices"
@@ -145,8 +149,9 @@ export default function SettingsScreen() {
               <Switch
                 value={hapticsEnabled}
                 onValueChange={setHapticsEnabled}
-                trackColor={{ false: colors.borderStrong, true: colors.accent }}
+                trackColor={{ false: '#E9E9EA', true: colors.completed }}
                 thumbColor={colors.white}
+                ios_backgroundColor="#E9E9EA"
               />
             )}
           />
@@ -158,40 +163,44 @@ export default function SettingsScreen() {
               <Switch
                 value={realtimeEnabled}
                 onValueChange={setRealtimeEnabled}
-                trackColor={{ false: colors.borderStrong, true: colors.accent }}
+                trackColor={{ false: '#E9E9EA', true: colors.completed }}
                 thumbColor={colors.white}
+                ios_backgroundColor="#E9E9EA"
               />
             )}
             last
           />
         </SettingsGroup>
 
-        <SettingsGroup title="Notifications">
+        <SettingsGroup title="NOTIFICATIONS">
           <SettingsRow
             label="Queue status"
             description={realtimeEnabled ? 'Live updates are enabled' : 'Live updates are paused'}
             icon={<BellRing size={17} color={colors.inkSecondary} />}
             right={(
-              <View style={styles.statusValue}>
-                <View style={[styles.statusDot, { backgroundColor: realtimeStatus === 'live' ? colors.completed : colors.inkTertiary }]} />
-                <Text style={styles.statusValueText}>{realtimeEnabled ? 'Live' : 'Paused'}</Text>
-              </View>
+              <Badge
+                label={realtimeEnabled ? 'Live' : 'Paused'}
+                tone={realtimeEnabled ? 'green' : 'neutral'}
+                dot
+                pulse={realtimeEnabled}
+              />
             )}
             last
           />
         </SettingsGroup>
 
-        <SettingsGroup title="Menu">
+        <SettingsGroup title="MENU">
           <SettingsRow
             label="Menu management"
-            description={user.role === 'MANAGER' || user.role === 'OWNER' ? 'Items, pricing, and availability' : 'Manager access required'}
+            description={isManagerOrOwner ? 'Items, pricing, and availability' : 'Manager access required'}
             icon={<UtensilsCrossed size={17} color={colors.inkSecondary} />}
-            onPress={user.role === 'MANAGER' || user.role === 'OWNER' ? () => router.push('/menu') : undefined}
+            onPress={isManagerOrOwner ? () => router.push('/menu') : undefined}
+            locked={!isManagerOrOwner}
             last
           />
         </SettingsGroup>
 
-        <SettingsGroup title="Staff & Permissions">
+        <SettingsGroup title="STAFF & PERMISSIONS">
           <SettingsRow
             label="Role access"
             description="Preview another role in the demo workspace"
@@ -202,7 +211,7 @@ export default function SettingsScreen() {
           />
         </SettingsGroup>
 
-        <SettingsGroup title="Appearance">
+        <SettingsGroup title="APPEARANCE">
           <SettingsRow
             label="CUP & CO theme"
             description="Warm ivory, espresso navy, and champagne gold"
@@ -212,7 +221,7 @@ export default function SettingsScreen() {
           />
         </SettingsGroup>
 
-        <SettingsGroup title="System">
+        <SettingsGroup title="SYSTEM">
           <SettingsRow
             label="Data connection"
             description={dataMode === 'supabase' ? 'Supabase Auth and PostgreSQL' : 'Local in-memory demo provider'}
@@ -269,7 +278,7 @@ export default function SettingsScreen() {
                   <Text style={styles.roleDescription}>{description}</Text>
                 </View>
                 {switchingRole === role ? <Text style={styles.switching}>Switching…</Text> : null}
-                {selected && switchingRole !== role ? <Text style={styles.current}>Current</Text> : null}
+                {selected && switchingRole !== role ? <Badge label="Current" tone="amber" /> : null}
               </Pressable>
             );
           })}
@@ -289,27 +298,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    padding: spacing.md,
+    padding: spacing.lg,
     marginBottom: spacing.xl,
     borderRadius: radii.xl,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
     backgroundColor: colors.surface,
-    ...shadows.subtle,
+    ...shadows.level1,
   },
-  avatar: { width: 52, height: 52, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.ink },
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.ink,
+  },
   avatarText: { ...typography.headline, color: colors.white, letterSpacing: 0.5 },
-  profileCopy: { flex: 1, gap: 3 },
+  profileCopy: { flex: 1, gap: 2 },
   profileName: { ...typography.headline, color: colors.ink },
   profileEmail: { ...typography.footnote, color: colors.inkSecondary },
-  profileMark: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accentSoft },
-  groups: { gap: spacing.xl },
-  statusValue: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  statusDot: { width: 7, height: 7, borderRadius: 4 },
-  statusValueText: { ...typography.caption, color: colors.inkSecondary },
+  profileMark: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accentSoft,
+  },
+  groups: { gap: spacing.md, paddingBottom: spacing.xxl },
   signingOut: { ...typography.caption, color: colors.inkSecondary },
-  roleList: { borderRadius: radii.lg, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
-  roleRow: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  roleList: { borderRadius: radii.lg, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: colors.borderSubtle },
+  roleRow: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderSubtle },
   roleRowSelected: { backgroundColor: colors.accentSoft },
   roleRowPressed: { opacity: 0.65 },
   roleIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accentSoft },
@@ -318,5 +336,5 @@ const styles = StyleSheet.create({
   roleName: { ...typography.subheadline, color: colors.ink },
   roleDescription: { ...typography.caption, color: colors.inkSecondary },
   switching: { ...typography.caption, color: colors.accentDark },
-  current: { ...typography.caption, color: colors.accentDark },
 });
+

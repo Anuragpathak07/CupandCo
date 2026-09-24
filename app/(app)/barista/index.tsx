@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { CheckCircle2, ClipboardList, Plus } from 'lucide-react-native';
+import { CheckCircle2, Plus } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ActiveOrderCard } from '@/components/order/ActiveOrderCard';
 import { UpcomingOrderRow } from '@/components/order/UpcomingOrderRow';
+import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Screen } from '@/components/ui/Screen';
@@ -19,8 +20,9 @@ import {
   useStartOrderMutation,
 } from '@/services/orders';
 import { useAuthStore } from '@/store/authStore';
-import { colors, spacing, typography } from '@/theme';
+import { colors, radii, shadows, spacing, typography } from '@/theme';
 import type { Order } from '@/types';
+import { pluralize } from '@/utils/formatters';
 import { triggerHaptic } from '@/utils/haptics';
 
 export default function BaristaQueueScreen() {
@@ -86,11 +88,17 @@ export default function BaristaQueueScreen() {
       <PageHeader
         eyebrow="SERVICE"
         title="Orders"
+        badge={
+          queue.length > 0 ? (
+            <Badge label={pluralize(queue.length, 'order')} tone="dark" />
+          ) : undefined
+        }
         actions={(
           <Button
             title="New order"
+            variant="dark"
             size="sm"
-            icon={<Plus size={15} color={colors.accent} />}
+            icon={<Plus size={15} color={colors.white} />}
             onPress={() => router.push('/cashier')}
           />
         )}
@@ -109,7 +117,8 @@ export default function BaristaQueueScreen() {
             action={(
               <Button
                 title="Add new order"
-                icon={<Plus size={16} color={colors.accent} />}
+                variant="dark"
+                icon={<Plus size={16} color={colors.white} />}
                 onPress={() => router.push('/cashier')}
               />
             )}
@@ -117,13 +126,6 @@ export default function BaristaQueueScreen() {
         </View>
       ) : (
         <View style={styles.content}>
-          <View style={styles.queueMeta}>
-            <ClipboardList size={15} color={colors.accentDark} />
-            <Text style={styles.queueMetaText}>
-              {queue.length} {queue.length === 1 ? 'order' : 'orders'} in queue
-            </Text>
-          </View>
-
           <ActiveOrderCard
             key={activeOrder.id}
             order={activeOrder}
@@ -139,7 +141,7 @@ export default function BaristaQueueScreen() {
             <View style={styles.upcomingSection}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Up next</Text>
-                <Text style={styles.sectionMeta}>{upcoming.length} waiting</Text>
+                <Badge label={`${upcoming.length} waiting`} tone="neutral" />
               </View>
               <View style={styles.ticketList}>
                 {visibleUpcoming.map((order) => (
@@ -183,23 +185,21 @@ function getErrorMessage(error: unknown) {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: spacing.xl },
+  content: { gap: spacing.xxl },
   emptyCard: {
     minHeight: 340,
-    borderRadius: 24,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    borderRadius: radii.xxl,
     backgroundColor: colors.surface,
+    justifyContent: 'center',
+    ...shadows.level1,
   },
-  queueMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: -spacing.sm },
-  queueMetaText: { ...typography.caption, color: colors.inkSecondary },
-  upcomingSection: { gap: spacing.sm, marginTop: spacing.sm },
+  upcomingSection: { gap: spacing.md, marginTop: spacing.sm },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionTitle: { ...typography.headline, color: colors.ink },
-  sectionMeta: { ...typography.caption, color: colors.inkTertiary },
   ticketList: { gap: spacing.sm },
   moreText: { ...typography.caption, color: colors.inkTertiary, textAlign: 'center', paddingTop: spacing.xs },
   confirmActions: { flexDirection: 'row', gap: spacing.sm },
   confirmButton: { flex: 1 },
   confirmCopy: { ...typography.body, color: colors.inkSecondary, paddingVertical: spacing.sm },
 });
+

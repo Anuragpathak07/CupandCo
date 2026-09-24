@@ -2,10 +2,11 @@ import { Check, MessageSquareText, Play, X } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
+import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { colors, radii, shadows, spacing, typography } from '@/theme';
 import type { Order } from '@/types';
-import { formatCurrency } from '@/utils/formatters';
+import { formatCurrency, pluralize } from '@/utils/formatters';
 import { getOrderItemCount, getOrderSubtotal } from '@/utils/orders';
 
 interface ActiveOrderCardProps {
@@ -31,19 +32,26 @@ export function ActiveOrderCard({
   const isPending = order.status === 'PENDING';
 
   return (
-    <Animated.View entering={FadeInDown.duration(300)} style={styles.card}>
+    <Animated.View entering={FadeInDown.duration(280)} style={styles.card}>
       <View style={styles.header}>
         <View style={styles.headerCopy}>
           <Text style={styles.kicker}>CURRENT ORDER</Text>
           <Text style={styles.orderNumber}>#{order.orderNumber}</Text>
         </View>
-        <Text style={styles.statusText}>{isPending ? 'Waiting' : 'In progress'}</Text>
+        <Badge
+          label={isPending ? 'Waiting' : 'In progress'}
+          tone={isPending ? 'amber' : 'blue'}
+          dot
+          pulse={!isPending}
+        />
       </View>
 
       <View style={styles.items}>
         {order.items.map((item) => (
           <View key={item.id} style={styles.itemRow}>
-            <Text style={styles.quantity}>{item.quantity}×</Text>
+            <View style={styles.quantityChip}>
+              <Text style={styles.quantity}>{item.quantity}×</Text>
+            </View>
             <View style={styles.itemCopy}>
               <Text style={styles.itemName}>{item.itemName}</Text>
               {item.notes ? (
@@ -71,7 +79,7 @@ export function ActiveOrderCard({
         <View style={styles.customerCopy}>
           <Text style={styles.metaLabel}>CUSTOMER</Text>
           <Text style={styles.customer}>{order.createdByName ?? 'Counter order'}</Text>
-          <Text style={styles.metaValue}>{itemCount} {itemCount === 1 ? 'item' : 'items'}</Text>
+          <Text style={styles.metaValue}>{pluralize(itemCount, 'item')}</Text>
         </View>
         <View style={styles.totalCopy}>
           <Text style={styles.metaLabel}>TOTAL</Text>
@@ -81,35 +89,38 @@ export function ActiveOrderCard({
 
       <Button
         title="Order Done"
-        size="xl"
+        size="lg"
+        fullWidth
         loading={completing}
         onPress={onDone}
-        icon={<Check size={21} color={colors.accent} strokeWidth={2.5} />}
+        icon={<Check size={20} color={colors.white} strokeWidth={2.5} />}
         style={styles.doneButton}
       />
 
-      <View style={styles.secondaryActions}>
-        {isPending ? (
-          <Button
-            title="Start preparing"
-            variant="ghost"
-            size="sm"
-            loading={starting}
-            onPress={onStart}
-            icon={<Play size={14} color={colors.accentDark} fill={colors.accentDark} />}
-          />
-        ) : null}
-        {onCancel ? (
-          <Button
-            title="Cancel ticket"
-            variant="ghost"
-            size="sm"
-            loading={cancelling}
-            onPress={onCancel}
-            icon={<X size={14} color={colors.danger} />}
-          />
-        ) : null}
-      </View>
+      {isPending || onCancel ? (
+        <View style={styles.secondaryActions}>
+          {isPending ? (
+            <Button
+              title="Start preparing"
+              variant="ghost"
+              size="sm"
+              loading={starting}
+              onPress={onStart}
+              icon={<Play size={13} color={colors.accentDark} fill={colors.accentDark} />}
+            />
+          ) : null}
+          {onCancel ? (
+            <Button
+              title="Cancel ticket"
+              variant="ghost"
+              size="sm"
+              loading={cancelling}
+              onPress={onCancel}
+              icon={<X size={13} color={colors.danger} />}
+            />
+          ) : null}
+        </View>
+      ) : null}
     </Animated.View>
   );
 }
@@ -117,42 +128,46 @@ export function ActiveOrderCard({
 const styles = StyleSheet.create({
   card: {
     width: '100%',
-    maxWidth: 820,
-    alignSelf: 'center',
     padding: spacing.xl,
     borderRadius: radii.xxl,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.accent,
+    borderWidth: 0,
     backgroundColor: colors.surface,
     gap: spacing.lg,
-    ...shadows.card,
+    ...shadows.level2,
   },
   header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.md },
-  headerCopy: { gap: spacing.xxs },
-  kicker: { ...typography.overline, color: colors.accentDark },
+  headerCopy: { gap: 2 },
+  kicker: { ...typography.overline, color: colors.inkTertiary },
   orderNumber: { ...typography.hero, color: colors.ink, fontVariant: ['tabular-nums'] },
-  statusText: { ...typography.caption, color: colors.inkTertiary, paddingTop: spacing.xs },
-  items: { gap: spacing.md },
-  itemRow: { minHeight: 32, flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  quantity: { ...typography.headline, color: colors.accentDark, minWidth: 28, fontVariant: ['tabular-nums'] },
-  itemCopy: { flex: 1, gap: 3 },
-  itemName: { ...typography.bodyMedium, color: colors.ink },
-  itemNoteRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  items: { gap: spacing.sm },
+  itemRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  quantityChip: {
+    height: 28,
+    minWidth: 32,
+    paddingHorizontal: 8,
+    borderRadius: radii.sm,
+    backgroundColor: colors.secondarySurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quantity: { ...typography.caption, color: colors.ink, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  itemCopy: { flex: 1, gap: 2 },
+  itemName: { ...typography.headline, color: colors.ink },
+  itemNoteRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
   itemNote: { ...typography.footnote, color: colors.accentDark, flex: 1 },
-  itemPrice: { ...typography.subheadline, color: colors.inkSecondary, fontVariant: ['tabular-nums'] },
+  itemPrice: { ...typography.body, color: colors.inkSecondary, fontVariant: ['tabular-nums'] },
   orderNote: { padding: spacing.md, borderRadius: radii.md, backgroundColor: colors.accentSoft, gap: spacing.xs },
-  orderNoteLabel: { ...typography.micro, color: colors.accentDark, letterSpacing: 0.7 },
+  orderNoteLabel: { ...typography.overline, color: colors.accentDark, fontSize: 11 },
   orderNoteText: { ...typography.subheadline, color: colors.ink },
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.borderSubtle },
   totalRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: spacing.md },
   customerCopy: { flex: 1, gap: 2 },
   totalCopy: { alignItems: 'flex-end', gap: 2 },
-  metaLabel: { ...typography.micro, color: colors.inkTertiary, letterSpacing: 0.6 },
+  metaLabel: { ...typography.overline, color: colors.inkTertiary, fontSize: 11 },
   customer: { ...typography.headline, color: colors.ink },
   metaValue: { ...typography.caption, color: colors.inkSecondary },
   total: { ...typography.title2, color: colors.ink, fontVariant: ['tabular-nums'] },
-  doneButton: { marginTop: spacing.xs },
-  secondaryActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
+  doneButton: { marginTop: spacing.xs, height: 50 },
+  secondaryActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, marginTop: -spacing.xs },
 });
+

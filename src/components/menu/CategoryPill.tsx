@@ -33,30 +33,53 @@ export function CategoryPill({ label, selected, count, onPress }: CategoryPillPr
 
 const styles = StyleSheet.create({
   pill: {
-    minHeight: 42,
+    minHeight: 38,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderWidth: 0,
+    backgroundColor: colors.secondarySurface,
     gap: spacing.xs,
   },
-  pillSelected: { backgroundColor: colors.ink, borderColor: colors.ink },
-  pillPressed: { opacity: 0.68 },
-  label: { ...typography.subheadline, color: colors.inkSecondary },
-  labelSelected: { color: colors.white },
+  pillSelected: {
+    backgroundColor: colors.ink,
+  },
+  pillPressed: {
+    opacity: 0.75,
+  },
+  label: {
+    ...typography.caption,
+    fontSize: 14,
+    color: colors.inkSecondary,
+    fontWeight: '500',
+    textTransform: 'none',
+  },
+  labelSelected: {
+    color: colors.white,
+    fontWeight: '600',
+  },
   count: {
-    minWidth: 21,
-    height: 21,
+    minWidth: 20,
+    height: 20,
     paddingHorizontal: 5,
-    borderRadius: 11,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
   },
-  countSelected: { backgroundColor: 'rgba(255,255,255,0.15)' },
-  countLabel: { ...typography.micro, color: colors.inkSecondary },
-  countLabelSelected: { color: colors.white },
+  countSelected: {
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+  },
+  countLabel: {
+    ...typography.micro,
+    fontSize: 11,
+    color: colors.inkSecondary,
+    fontWeight: '500',
+  },
+  countLabelSelected: {
+    color: colors.white,
+    fontWeight: '600',
+  },
 });
+

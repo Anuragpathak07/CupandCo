@@ -10,7 +10,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { colors, radii, spacing, typography } from '@/theme';
+import { colors, radii, shadows, spacing, typography } from '@/theme';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'dark';
 type ButtonSize = 'sm' | 'md' | 'lg' | 'xl';
@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
   base: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radii.md,
+    borderRadius: radii.pill,
     borderWidth: 1,
     borderColor: 'transparent',
   },
@@ -91,44 +91,47 @@ const styles = StyleSheet.create({
   },
   label: {
     ...typography.button,
+    fontWeight: '600',
     textAlign: 'center',
   },
   labelWithIcon: {
     marginLeft: spacing.xs,
   },
   size_sm: {
-    minHeight: 36,
-    paddingHorizontal: spacing.sm,
+    minHeight: 34,
+    paddingHorizontal: spacing.md,
   },
   size_md: {
     minHeight: 44,
-    paddingHorizontal: spacing.md,
-  },
-  size_lg: {
-    minHeight: 52,
     paddingHorizontal: spacing.lg,
   },
+  size_lg: {
+    minHeight: 50,
+    paddingHorizontal: spacing.xl,
+  },
   size_xl: {
-    minHeight: 64,
-    borderRadius: radii.lg,
+    minHeight: 56,
+    borderRadius: radii.pill,
     paddingHorizontal: spacing.xl,
   },
   primary: {
     backgroundColor: colors.ink,
+    ...shadows.level1,
   },
   secondary: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
+    backgroundColor: colors.secondarySurface,
+    borderColor: 'transparent',
   },
   ghost: {
     backgroundColor: 'transparent',
   },
   danger: {
     backgroundColor: colors.cancelledSoft,
-    borderColor: '#FECDD3',
+    borderColor: 'transparent',
   },
   dark: {
     backgroundColor: colors.ink,
+    ...shadows.level1,
   },
   label_primary: { color: colors.white },
   label_secondary: { color: colors.ink },
@@ -139,10 +142,11 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   pressed: {
-    opacity: 0.76,
-    transform: [{ scale: 0.985 }],
+    opacity: 0.88,
+    transform: [{ scale: 0.98 }],
   },
   disabled: {
     opacity: 0.45,
   },
 });
+

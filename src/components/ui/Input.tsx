@@ -1,5 +1,7 @@
-import { forwardRef, type ReactNode } from 'react';
+import { forwardRef, useState, type ReactNode } from 'react';
+import { X } from 'lucide-react-native';
 import {
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -16,12 +18,15 @@ interface InputProps extends TextInputProps {
   hint?: string;
   left?: ReactNode;
   containerStyle?: ViewStyle;
+  clearButtonMode?: 'never' | 'while-editing';
 }
 
 export const Input = forwardRef<TextInput, InputProps>(function Input(
-  { label, error, hint, left, containerStyle, style, multiline, ...props },
+  { label, error, hint, left, containerStyle, style, multiline, value, onChangeText, clearButtonMode, onFocus, onBlur, ...props },
   ref,
 ) {
+  const [isFocused, setIsFocused] = useState(false);
+
   return (
     <View style={[styles.container, containerStyle]}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
@@ -29,6 +34,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
         style={[
           styles.field,
           multiline && styles.multiline,
+          isFocused && styles.fieldFocused,
           error ? styles.fieldError : undefined,
           props.editable === false && styles.disabled,
         ]}
@@ -36,12 +42,32 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
         {left ? <View style={styles.left}>{left}</View> : null}
         <TextInput
           ref={ref}
+          value={value}
+          onChangeText={onChangeText}
           placeholderTextColor={colors.inkTertiary}
           selectionColor={colors.accent}
           multiline={multiline}
+          onFocus={(e) => {
+            setIsFocused(true);
+            onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setIsFocused(false);
+            onBlur?.(e);
+          }}
           style={[styles.input, multiline && styles.inputMultiline, style]}
           {...props}
         />
+        {clearButtonMode === 'while-editing' && value ? (
+          <Pressable
+            onPress={() => onChangeText?.('')}
+            hitSlop={6}
+            accessibilityLabel="Clear text"
+            style={styles.clearButton}
+          >
+            <X size={14} color={colors.inkTertiary} />
+          </Pressable>
+        ) : null}
       </View>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {!error && hint ? <Text style={styles.hint}>{hint}</Text> : null}
@@ -56,16 +82,21 @@ const styles = StyleSheet.create({
   label: {
     ...typography.subheadline,
     color: colors.ink,
+    fontWeight: '500',
   },
   field: {
-    minHeight: 48,
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: 'transparent',
+    backgroundColor: colors.secondarySurface,
     paddingHorizontal: spacing.md,
+  },
+  fieldFocused: {
+    borderColor: colors.accent,
+    backgroundColor: colors.surface,
   },
   multiline: {
     minHeight: 104,
@@ -76,8 +107,8 @@ const styles = StyleSheet.create({
     borderColor: colors.danger,
   },
   disabled: {
-    backgroundColor: colors.surfaceMuted,
-    opacity: 0.72,
+    backgroundColor: colors.secondarySurface,
+    opacity: 0.65,
   },
   input: {
     ...typography.body,
@@ -91,7 +122,16 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   left: {
-    marginRight: spacing.sm,
+    marginRight: spacing.xs,
+  },
+  clearButton: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: spacing.xs,
   },
   error: {
     ...typography.footnote,
@@ -102,3 +142,4 @@ const styles = StyleSheet.create({
     color: colors.inkTertiary,
   },
 });
+

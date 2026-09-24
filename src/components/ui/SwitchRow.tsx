@@ -18,9 +18,9 @@ export function SwitchRow({ label, description, value, onValueChange }: SwitchRo
       <Switch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ false: colors.borderStrong, true: colors.accent }}
+        trackColor={{ false: '#E9E9EA', true: colors.completed }}
         thumbColor={colors.white}
-        ios_backgroundColor={colors.borderStrong}
+        ios_backgroundColor="#E9E9EA"
       />
     </View>
   );
@@ -46,3 +46,4 @@ const styles = StyleSheet.create({
     color: colors.inkSecondary,
   },
 });
+

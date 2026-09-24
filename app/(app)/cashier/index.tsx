@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Search, ShoppingBag, Trash2 } from 'lucide-react-native';
-import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { ItemNoteModal } from '@/components/order/ItemNoteModal';
@@ -22,9 +22,9 @@ import {
   selectCartSubtotal,
   useCartStore,
 } from '@/store/cartStore';
-import { colors, layout, radii, spacing, typography } from '@/theme';
+import { colors, layout, radii, shadows, spacing, typography } from '@/theme';
 import type { MenuItem } from '@/types';
-import { formatCurrency } from '@/utils/formatters';
+import { formatCurrency, pluralize } from '@/utils/formatters';
 import { triggerHaptic } from '@/utils/haptics';
 
 export default function CashierScreen() {
@@ -95,7 +95,7 @@ export default function CashierScreen() {
   };
 
   const contentWidth = Math.min(width, layout.maxContentWidth) - spacing.xl * 2;
-  const columns = contentWidth >= 1020 ? 4 : contentWidth >= 650 ? 3 : contentWidth >= 390 ? 2 : 1;
+  const columns = contentWidth >= 960 ? 4 : contentWidth >= 620 ? 3 : contentWidth >= 380 ? 2 : 1;
   const cardWidth = Math.max(160, (contentWidth - spacing.sm * (columns - 1)) / columns);
 
   return (
@@ -103,37 +103,35 @@ export default function CashierScreen() {
       includeTopInset={false}
       contentContainerStyle={styles.screenContent}
       footer={
-        <View style={styles.basketDock}>
-          <View style={styles.basketInner}>
+        <View style={styles.floatingCartDock}>
+          <View style={styles.floatingCartInner}>
             <View style={styles.basketSummary}>
               <View style={styles.bagIcon}>
-                <ShoppingBag size={20} color={colors.accentDark} />
+                <ShoppingBag size={18} color={colors.accentDark} />
+                {cartCount > 0 ? (
+                  <View style={styles.countBadge}>
+                    <Text style={styles.countBadgeText}>{cartCount}</Text>
+                  </View>
+                ) : null}
               </View>
               <View>
-                <Text style={styles.basketCount}>
-                  {cartCount} {cartCount === 1 ? 'item' : 'items'}
-                </Text>
+                <Text style={styles.basketCount}>{pluralize(cartCount, 'item')}</Text>
                 <Text style={styles.basketTotal}>{formatCurrency(subtotal)}</Text>
               </View>
             </View>
+
             <View style={styles.basketActions}>
-              {cartCount > 0 ? (
-                <Button
-                  title="Clear"
-                  variant="ghost"
-                  size="sm"
-                  onPress={clear}
-                  icon={<Trash2 size={15} color={colors.inkSecondary} />}
-                />
-              ) : null}
               <Button
                 title="Review"
-                variant="secondary"
+                variant="ghost"
+                size="sm"
                 onPress={() => setBasketOpen(true)}
                 disabled={cartCount === 0}
               />
               <Button
-                title={`Place order${cartCount > 0 ? ` · ${formatCurrency(subtotal)}` : ''}`}
+                title="Place order"
+                variant={cartCount > 0 ? 'dark' : 'secondary'}
+                size="sm"
                 onPress={() => void handlePlaceOrder()}
                 loading={createOrder.isPending}
                 disabled={cartCount === 0}
@@ -148,37 +146,40 @@ export default function CashierScreen() {
         title="New order"
         subtitle="Build the basket, add prep notes, and send it straight to the live barista queue."
         actions={
-          cartCount > 0 ? <Button title="Clear basket" variant="secondary" onPress={clear} /> : undefined
+          cartCount > 0 ? <Button title="Clear basket" variant="secondary" size="sm" onPress={clear} /> : undefined
         }
       />
 
       <View style={styles.toolbar}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryScroll}
-        >
-          <CategoryPill
-            label="All items"
-            selected={categoryId === 'all'}
-            count={menu?.items.length}
-            onPress={() => setCategoryId('all')}
-          />
-          {categories.map((category) => (
+        <View style={styles.scrollWrapper}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryScroll}
+          >
             <CategoryPill
-              key={category.id}
-              label={category.name}
-              selected={categoryId === category.id}
-              count={menu?.items.filter((item) => item.categoryId === category.id).length}
-              onPress={() => setCategoryId(category.id)}
+              label="All items"
+              selected={categoryId === 'all'}
+              count={menu?.items.length}
+              onPress={() => setCategoryId('all')}
             />
-          ))}
-        </ScrollView>
+            {categories.map((category) => (
+              <CategoryPill
+                key={category.id}
+                label={category.name}
+                selected={categoryId === category.id}
+                count={menu?.items.filter((item) => item.categoryId === category.id).length}
+                onPress={() => setCategoryId(category.id)}
+              />
+            ))}
+          </ScrollView>
+        </View>
+
         <Input
           value={search}
           onChangeText={setSearch}
           placeholder="Search the menu"
-          left={<Search size={18} color={colors.inkTertiary} />}
+          left={<Search size={17} color={colors.inkTertiary} />}
           containerStyle={styles.search}
           returnKeyType="search"
           clearButtonMode="while-editing"
@@ -216,7 +217,7 @@ export default function CashierScreen() {
         visible={basketOpen}
         onClose={() => setBasketOpen(false)}
         title="Review order"
-        subtitle={`${cartCount} ${cartCount === 1 ? 'item' : 'items'} · prices are snapshotted when placed`}
+        subtitle={`${pluralize(cartCount, 'item')} · prices are snapshotted when placed`}
         footer={
           <Button
             title={`Place order · ${formatCurrency(subtotal)}`}
@@ -258,33 +259,71 @@ function getErrorMessage(error: unknown) {
 }
 
 const styles = StyleSheet.create({
-  screenContent: { paddingBottom: spacing.xxl },
-  toolbar: { gap: spacing.md, marginBottom: spacing.lg },
+  screenContent: { paddingBottom: 110 },
+  toolbar: { gap: spacing.md, marginBottom: spacing.xl },
+  scrollWrapper: { flex: 1 },
   categoryScroll: { gap: spacing.xs, paddingRight: spacing.lg },
   search: { width: '100%' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, alignItems: 'stretch' },
-  emptyCard: { borderRadius: radii.xl, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  basketDock: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.scrim,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+  emptyCard: { borderRadius: radii.xl, backgroundColor: colors.surface, ...shadows.level1 },
+  floatingCartDock: {
+    position: Platform.OS === 'web' ? ('fixed' as any) : 'absolute',
+    bottom: 24,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    zIndex: 90,
+    pointerEvents: 'box-none',
   },
-  basketInner: {
+  floatingCartInner: {
     width: '100%',
     maxWidth: layout.maxContentWidth,
-    minHeight: 64,
-    alignSelf: 'center',
+    height: 60,
+    borderRadius: radii.xxl,
+    paddingHorizontal: spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: spacing.md,
+    backgroundColor: Platform.select({
+      web: 'rgba(255, 255, 255, 0.82)',
+      default: colors.surface,
+    }) as string,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    ...shadows.level2,
+    ...(Platform.OS === 'web'
+      ? {
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+        }
+      : {}),
   },
   basketSummary: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  bagIcon: { width: 42, height: 42, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accentSoft },
+  bagIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accentSoft,
+    position: 'relative',
+  },
+  countBadge: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    height: 16,
+    minWidth: 16,
+    borderRadius: 8,
+    backgroundColor: colors.accentDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  countBadgeText: { ...typography.micro, fontSize: 10, color: colors.white, fontWeight: '700' },
   basketCount: { ...typography.caption, color: colors.inkSecondary },
   basketTotal: { ...typography.headline, color: colors.ink, fontVariant: ['tabular-nums'] },
   basketActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
 });
+

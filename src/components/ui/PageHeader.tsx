@@ -7,15 +7,19 @@ interface PageHeaderProps {
   eyebrow?: string;
   title: string;
   subtitle?: string;
+  badge?: ReactNode;
   actions?: ReactNode;
 }
 
-export function PageHeader({ eyebrow, title, subtitle, actions }: PageHeaderProps) {
+export function PageHeader({ eyebrow, title, subtitle, badge, actions }: PageHeaderProps) {
   return (
     <View style={styles.container}>
       <View style={styles.copy}>
         {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-        <Text accessibilityRole="header" style={styles.title}>{title}</Text>
+        <View style={styles.titleRow}>
+          <Text accessibilityRole="header" style={styles.title}>{title}</Text>
+          {badge}
+        </View>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       </View>
       {actions ? <View style={styles.actions}>{actions}</View> : null}
@@ -37,10 +41,15 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     ...typography.overline,
-    color: colors.accentDark,
+    color: colors.inkTertiary,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   title: {
-    ...typography.title1,
+    ...typography.largeTitle,
     color: colors.ink,
   },
   subtitle: {
@@ -54,3 +63,4 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
 });
+

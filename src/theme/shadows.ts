@@ -4,38 +4,63 @@ export const shadows = {
   none: {},
   subtle: Platform.select<ViewStyle>({
     web: {
-      boxShadow: '0 1px 2px rgba(28, 28, 30, 0.04)',
+      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)',
     },
     default: {
-      shadowColor: '#1C1C1E',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.04,
-      shadowRadius: 2,
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.03,
+      shadowRadius: 6,
       elevation: 1,
     },
   }),
   card: Platform.select<ViewStyle>({
     web: {
-      boxShadow: '0 8px 30px rgba(28, 28, 30, 0.06)',
+      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
     },
     default: {
-      shadowColor: '#1C1C1E',
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.07,
-      shadowRadius: 16,
-      elevation: 3,
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.04,
+      shadowRadius: 14,
+      elevation: 2,
     },
   }),
   floating: Platform.select<ViewStyle>({
     web: {
-      boxShadow: '0 18px 50px rgba(28, 28, 30, 0.14)',
+      boxShadow: '0 12px 36px rgba(0, 0, 0, 0.08)',
     },
     default: {
-      shadowColor: '#1C1C1E',
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: 0.14,
-      shadowRadius: 28,
-      elevation: 10,
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.08,
+      shadowRadius: 24,
+      elevation: 6,
+    },
+  }),
+  level1: Platform.select<ViewStyle>({
+    web: {
+      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
+    },
+    default: {
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.04,
+      shadowRadius: 14,
+      elevation: 2,
+    },
+  }),
+  level2: Platform.select<ViewStyle>({
+    web: {
+      boxShadow: '0 12px 36px rgba(0, 0, 0, 0.08)',
+    },
+    default: {
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.08,
+      shadowRadius: 24,
+      elevation: 6,
     },
   }),
 } satisfies Record<string, ViewStyle>;
+

@@ -2,12 +2,15 @@ import { ChevronRight } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeOutUp } from 'react-native-reanimated';
 
-import { colors, radii, spacing, typography } from '@/theme';
+import { colors, radii, shadows, spacing, typography } from '@/theme';
 import type { Order } from '@/types';
 import { formatTime } from '@/utils/dates';
+import { pluralize } from '@/utils/formatters';
 import { getOrderItemCount } from '@/utils/orders';
 
 export function UpcomingOrderRow({ order, onPress }: { order: Order; onPress?: () => void }) {
+  const itemCount = getOrderItemCount(order);
+
   return (
     <Animated.View entering={FadeInDown.duration(220)} exiting={FadeOutUp.duration(160)}>
       <Pressable
@@ -20,10 +23,10 @@ export function UpcomingOrderRow({ order, onPress }: { order: Order; onPress?: (
           <Text style={styles.number}>#{order.orderNumber}</Text>
         </View>
         <View style={styles.copy}>
-          <Text style={styles.itemCount}>{getOrderItemCount(order)} items</Text>
           <Text numberOfLines={1} style={styles.summary}>
             {order.items.map((item) => `${item.quantity}× ${item.itemName}`).join(' · ')}
           </Text>
+          <Text style={styles.itemCount}>{pluralize(itemCount, 'item')}</Text>
         </View>
         <View style={styles.timeCopy}>
           <Text style={styles.timeLabel}>PLACED</Text>
@@ -37,28 +40,28 @@ export function UpcomingOrderRow({ order, onPress }: { order: Order; onPress?: (
 
 const styles = StyleSheet.create({
   row: {
-    minHeight: 70,
+    minHeight: 68,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: radii.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    borderWidth: 0,
     backgroundColor: colors.surface,
+    ...shadows.level1,
   },
   pressed: { backgroundColor: colors.surfacePressed },
   numberBox: {
-    minWidth: 50,
+    minWidth: 54,
     alignItems: 'flex-start',
-    gap: 2,
   },
   number: { ...typography.headline, color: colors.ink, fontVariant: ['tabular-nums'] },
   copy: { flex: 1, minWidth: 0, gap: 2 },
-  itemCount: { ...typography.overline, color: colors.inkTertiary, fontSize: 10 },
-  summary: { ...typography.footnote, color: colors.inkSecondary },
+  summary: { ...typography.bodyMedium, color: colors.ink },
+  itemCount: { ...typography.caption, color: colors.inkTertiary },
   timeCopy: { alignItems: 'flex-end', gap: 2 },
-  timeLabel: { ...typography.micro, color: colors.inkTertiary, letterSpacing: 0.5, fontSize: 9 },
-  time: { ...typography.caption, color: colors.inkSecondary },
+  timeLabel: { ...typography.overline, color: colors.inkTertiary, fontSize: 10 },
+  time: { ...typography.footnote, color: colors.inkSecondary },
 });
+

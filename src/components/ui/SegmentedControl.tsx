@@ -64,8 +64,9 @@ const styles = StyleSheet.create({
   track: {
     flexDirection: 'row',
     padding: 3,
-    borderRadius: radii.md,
-    backgroundColor: colors.surfaceMuted,
+    borderRadius: radii.pill,
+    backgroundColor: colors.secondarySurface,
+    alignSelf: 'flex-start',
   },
   trackScroll: {
     minWidth: '100%',
@@ -74,9 +75,9 @@ const styles = StyleSheet.create({
     minWidth: '100%',
   },
   segment: {
-    minHeight: 38,
-    paddingHorizontal: spacing.md,
-    borderRadius: radii.sm,
+    minHeight: 36,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.pill,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -93,30 +94,35 @@ const styles = StyleSheet.create({
     opacity: 0.65,
   },
   label: {
-    ...typography.footnote,
+    ...typography.caption,
+    fontSize: 13,
     color: colors.inkSecondary,
+    fontWeight: '500',
   },
   labelSelected: {
     color: colors.ink,
     fontWeight: '600',
   },
   count: {
-    minWidth: 20,
-    height: 20,
-    paddingHorizontal: 5,
-    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.border,
+    backgroundColor: 'rgba(0,0,0,0.06)',
   },
   countSelected: {
     backgroundColor: colors.accentSoft,
   },
   countLabel: {
     ...typography.micro,
+    fontSize: 11,
     color: colors.inkSecondary,
   },
   countLabelSelected: {
     color: colors.accentDark,
+    fontWeight: '600',
   },
 });
+
