@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Cup & Co",
+    "slug": "cupandco",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "cupandco",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "icon": "./assets/images/icon.png",
+      "bundleIdentifier": "com.cupandco.operations",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.cupandco.operations",
+      "adaptiveIcon": {
+        "backgroundColor": "#F8F5EE",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": true
+    },
+    "web": {
+      "name": "Cup & Co Operations",
+      "shortName": "Cup & Co",
+      "description": "Fast, calm café order operations.",
+      "output": "static",
+      "bundler": "metro",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F8F5EE",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 112
+        }
+      ],
+      "expo-font",
+      "expo-status-bar"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

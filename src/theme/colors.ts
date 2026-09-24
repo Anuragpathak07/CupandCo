@@ -1,0 +1,48 @@
+export const colors = {
+  // Brand palette
+  deepNavy: "#071426",
+  coffeeNavy: "#0B1730",
+  champagneGold: "#D9B65D",
+  warmGold: "#E8C76A",
+  cream: "#F8F5EE",
+  white: "#FFFFFF",
+  charcoal: "#1A1A1A",
+  mutedGray: "#77736C",
+
+  // Semantic & UI Token Aliases
+  background: "#F8F5EE",
+  canvas: "#F8F5EE",
+  surface: "#FFFFFF",
+  primary: "#0B1730",
+  accent: "#D9B65D",
+  accentSoft: "rgba(217, 182, 93, 0.15)",
+  accentDark: "#B8943D",
+  ink: "#071426",
+  inkSecondary: "#525966",
+  inkTertiary: "#8C929E",
+  textPrimary: "#071426",
+  textSecondary: "#77736C",
+  border: "#E5E5EA",
+  success: "#34C759",
+  completed: "#34C759",
+  completedSoft: "rgba(52, 199, 89, 0.12)",
+  progress: "#007AFF",
+  pending: "#FF9500",
+  cancelled: "#FF3B30",
+  surfaceMuted: "#F2F2F7",
+  surfacePressed: "#E8E8ED",
+  borderStrong: "#D1D1D6",
+  pendingSoft: "rgba(255, 149, 0, 0.12)",
+  progressSoft: "rgba(0, 122, 255, 0.10)",
+  cancelledSoft: "rgba(255, 59, 48, 0.10)",
+  overlay: "rgba(7, 20, 38, 0.48)",
+  black: "#000000",
+  shadow: "rgba(7, 20, 38, 0.12)",
+  warning: "#FFCC00",
+  error: "#FF3B30",
+  danger: "#FF3B30",
+  scrim: "rgba(248, 245, 238, 0.95)",
+};
+
+export type ColorToken = keyof typeof colors;
+
