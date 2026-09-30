@@ -21,6 +21,31 @@ export function isSameLocalDay(left: Date | string, right: Date | string = new D
   return toDateKey(left) === toDateKey(right);
 }
 
+export function addDays(date: Date, days: number) {
+  const value = new Date(date);
+  value.setDate(value.getDate() + days);
+  return value;
+}
+
+export function startOfWeek(date = new Date()) {
+  // Monday-start weeks.
+  const value = startOfLocalDay(date);
+  value.setDate(value.getDate() - ((value.getDay() + 6) % 7));
+  return value;
+}
+
+export function startOfMonth(date = new Date()) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+export function endOfMonth(date = new Date()) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0);
+}
+
+export function addMonths(date: Date, months: number) {
+  return new Date(date.getFullYear(), date.getMonth() + months, 1);
+}
+
 export function formatTime(date: string | Date) {
   return new Intl.DateTimeFormat('en-US', {
     hour: 'numeric',

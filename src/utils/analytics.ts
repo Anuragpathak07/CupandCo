@@ -1,10 +1,18 @@
 import type { AnalyticsData, Order } from '@/types';
-import { isSameLocalDay } from './dates';
+import { toDateKey } from './dates';
 import { getOrderSubtotal } from './orders';
 
 export function calculateAnalytics(orders: Order[], date = new Date()): AnalyticsData {
-  const todaysOrders = orders.filter((order) => isSameLocalDay(order.createdAt, date));
-  const completed = todaysOrders.filter((order) => order.status === 'COMPLETED');
+  const key = toDateKey(date);
+  return calculateAnalyticsForRange(orders, key, key);
+}
+
+export function calculateAnalyticsForRange(orders: Order[], startKey: string, endKey: string): AnalyticsData {
+  const inRange = orders.filter((order) => {
+    const key = toDateKey(order.createdAt);
+    return key >= startKey && key <= endKey;
+  });
+  const completed = inRange.filter((order) => order.status === 'COMPLETED');
   const revenue = completed.reduce((total, order) => total + getOrderSubtotal(order), 0);
   const prepTimes = completed
     .filter((order) => order.startedAt && order.completedAt)
@@ -40,9 +48,9 @@ export function calculateAnalytics(orders: Order[], date = new Date()): Analytic
       : 0,
     statusCounts: {
       completed: completed.length,
-      pending: todaysOrders.filter((order) => order.status === 'PENDING').length,
-      inProgress: todaysOrders.filter((order) => order.status === 'IN_PROGRESS').length,
-      cancelled: todaysOrders.filter((order) => order.status === 'CANCELLED').length,
+      pending: inRange.filter((order) => order.status === 'PENDING').length,
+      inProgress: inRange.filter((order) => order.status === 'IN_PROGRESS').length,
+      cancelled: inRange.filter((order) => order.status === 'CANCELLED').length,
     },
     popularItems: [...popular.values()].sort((a, b) => b.quantity - a.quantity || b.revenue - a.revenue),
   };
