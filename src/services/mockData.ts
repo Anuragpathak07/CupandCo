@@ -365,6 +365,13 @@ export async function deleteMockMenuItem(id: string) {
   emitChange();
 }
 
+export async function deleteMockOrder(id: string) {
+  await delay();
+  if (!orders.some((order) => order.id === id)) throw new Error('Order not found.');
+  orders = orders.filter((order) => order.id !== id);
+  emitChange();
+}
+
 export function resetMockData() {
   categories = clone(categoriesSeed);
   menuItems = clone(menuItemsSeed);

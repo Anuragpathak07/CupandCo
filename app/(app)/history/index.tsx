@@ -12,11 +12,14 @@ import { Screen } from '@/components/ui/Screen';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { SheetModal } from '@/components/ui/SheetModal';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
-import { useOrdersQuery } from '@/services/orders';
+import { useToast } from '@/components/ui/Toast';
+import { useDeleteOrderMutation, useOrdersQuery } from '@/services/orders';
+import { useAuthStore } from '@/store/authStore';
 import { colors, radii, shadows, spacing, typography } from '@/theme';
 import type { Order, OrderStatus } from '@/types';
 import { formatTime, toDateKey } from '@/utils/dates';
 import { formatCurrency, pluralize } from '@/utils/formatters';
+import { triggerHaptic } from '@/utils/haptics';
 import { getOrderItemCount, getOrderSubtotal } from '@/utils/orders';
 
 type DatePreset = 'today' | 'date';
@@ -36,6 +39,10 @@ const statusLabels: Record<StatusFilter, string> = {
 
 export default function OrderHistoryScreen() {
   const { data: orders, isLoading, isError, error, refetch, isFetching } = useOrdersQuery();
+  const { showToast } = useToast();
+  const user = useAuthStore((state) => state.user);
+  const deleteOrder = useDeleteOrderMutation();
+  const canDelete = user?.role === 'OWNER';
   const [datePreset, setDatePreset] = useState<DatePreset>('today');
   const [status, setStatus] = useState<StatusFilter>('ALL');
   const [search, setSearch] = useState('');
@@ -45,6 +52,7 @@ export default function OrderHistoryScreen() {
   const [statusDraft, setStatusDraft] = useState<StatusFilter>('ALL');
   const [rangeError, setRangeError] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Order | null>(null);
 
   const dateMatches = useCallback(
     (order: Order) => {
@@ -102,6 +110,19 @@ export default function OrderHistoryScreen() {
     setStatusDraft('ALL');
     setRangeError('');
     setFilterOpen(false);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteOrder.mutateAsync(deleteTarget.id);
+      await triggerHaptic('success');
+      showToast({ title: `Order #${deleteTarget.orderNumber} deleted` });
+      if (selectedOrder?.id === deleteTarget.id) setSelectedOrder(null);
+      setDeleteTarget(null);
+    } catch (caught) {
+      showToast({ title: 'Could not delete ticket', message: getErrorMessage(caught), tone: 'error' });
+    }
   };
 
   return (
@@ -287,7 +308,38 @@ export default function OrderHistoryScreen() {
         </View>
       </SheetModal>
 
-      <OrderDetailModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
+      <OrderDetailModal
+        order={selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+        canDelete={canDelete}
+        deleting={deleteOrder.isPending}
+        onDelete={selectedOrder ? () => setDeleteTarget(selectedOrder) : undefined}
+      />
+
+      <SheetModal
+        visible={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        title={`Delete Order #${deleteTarget?.orderNumber ?? ''}?`}
+        subtitle="This permanently removes the ticket and its items."
+        variant="center"
+        scroll={false}
+        footer={(
+          <View style={styles.deleteActions}>
+            <Button title="Cancel" variant="secondary" onPress={() => setDeleteTarget(null)} style={styles.flexButton} />
+            <Button
+              title="Delete"
+              variant="danger"
+              loading={deleteOrder.isPending}
+              onPress={() => void confirmDelete()}
+              style={styles.flexButton}
+            />
+          </View>
+        )}
+      >
+        <Text style={styles.deleteCopy}>
+          Only owners see this action. Deleted tickets cannot be recovered and are removed from reports.
+        </Text>
+      </SheetModal>
     </Screen>
   );
 }
@@ -357,5 +409,8 @@ const styles = StyleSheet.create({
   advancedStatuses: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   filterActions: { flexDirection: 'row', gap: spacing.sm },
   filterButton: { flex: 1 },
+  deleteActions: { flexDirection: 'row', gap: spacing.sm },
+  flexButton: { flex: 1 },
+  deleteCopy: { ...typography.body, color: colors.inkSecondary, paddingVertical: spacing.sm },
 });
 

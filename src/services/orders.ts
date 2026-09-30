@@ -6,6 +6,7 @@ import { useSettingsStore } from '@/store/settingsStore';
 import type { CreateOrderInput, Order, OrderStatus, RealtimeStatus } from '@/types';
 import {
   createMockOrder,
+  deleteMockOrder,
   getMockOrders,
   subscribeMockChanges,
   updateMockOrderStatus,
@@ -192,6 +193,23 @@ export function useCancelOrderMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => setOrderStatus(id, 'CANCELLED'),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ordersQueryKey }),
+  });
+}
+
+export async function deleteOrder(id: string) {
+  if (!isRemoteData()) return deleteMockOrder(id);
+
+  // Order lines cascade via FK (order_items.order_id ON DELETE CASCADE).
+  // RLS `orders_delete_manager` restricts this to owners/managers.
+  const { error } = await requireSupabase().from('orders').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export function useDeleteOrderMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteOrder,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ordersQueryKey }),
   });
 }

@@ -1,7 +1,8 @@
-import { CheckCircle2, Clock3, MessageSquareText, ReceiptText, UserRound } from 'lucide-react-native';
+import { CheckCircle2, Clock3, MessageSquareText, ReceiptText, Trash2, UserRound } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { StatusBadge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { SheetModal } from '@/components/ui/SheetModal';
 import { colors, radii, spacing, typography } from '@/theme';
 import type { Order } from '@/types';
@@ -9,7 +10,15 @@ import { formatDate, formatDuration, formatTime } from '@/utils/dates';
 import { formatCurrency } from '@/utils/formatters';
 import { getOrderItemCount, getOrderSubtotal } from '@/utils/orders';
 
-export function OrderDetailModal({ order, onClose }: { order: Order | null; onClose: () => void }) {
+interface OrderDetailModalProps {
+  order: Order | null;
+  onClose: () => void;
+  canDelete?: boolean;
+  deleting?: boolean;
+  onDelete?: () => void;
+}
+
+export function OrderDetailModal({ order, onClose, canDelete = false, deleting = false, onDelete }: OrderDetailModalProps) {
   const prepSeconds = order?.startedAt && order.completedAt
     ? Math.max(0, (new Date(order.completedAt).getTime() - new Date(order.startedAt).getTime()) / 1000)
     : 0;
@@ -20,6 +29,18 @@ export function OrderDetailModal({ order, onClose }: { order: Order | null; onCl
       onClose={onClose}
       title={order ? `Order #${order.orderNumber}` : 'Order details'}
       subtitle={order ? formatDate(order.createdAt, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : undefined}
+      footer={
+        canDelete && order && onDelete ? (
+          <Button
+            title="Delete ticket"
+            variant="danger"
+            loading={deleting}
+            icon={<Trash2 size={16} color={colors.danger} />}
+            onPress={onDelete}
+            fullWidth
+          />
+        ) : null
+      }
     >
       {order ? (
         <View style={styles.container}>
