@@ -7,6 +7,8 @@ import {
   Settings,
   ShoppingBag,
   UtensilsCrossed,
+  LogOut,
+  UserCog,
   type LucideIcon,
 } from 'lucide-react-native';
 import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
@@ -16,6 +18,7 @@ import { useAuthStore } from '@/store/authStore';
 import { colors, radii, shadows, spacing, typography } from '@/theme';
 import type { Role } from '@/types';
 import { canRoleAccess, defaultRouteForRole } from '@/utils/roles';
+import { triggerHaptic } from '@/utils/haptics';
 
 type TabConfig = {
   name: string;
@@ -38,9 +41,22 @@ function FloatingNavBar({ userRole }: { userRole: Role }) {
   const pathname = usePathname();
   const router = useRouter();
   const showLabels = width >= 540;
+  const logout = useAuthStore((state) => state.logout);
 
   // Filter allowed tabs based on role
   const visibleTabs = tabs.filter((t) => t.roles.includes(userRole));
+
+  const handleLogout = async () => {
+    await triggerHaptic('selection');
+    await logout();
+    router.replace('/login');
+  };
+
+  const handleSwitchUser = async () => {
+    await triggerHaptic('selection');
+    await logout();
+    router.replace('/login');
+  };
 
   return (
     <View style={styles.navWrapper}>
@@ -78,6 +94,24 @@ function FloatingNavBar({ userRole }: { userRole: Role }) {
             </Pressable>
           );
         })}
+
+        {/* Switch User / Logout Button */}
+        <Pressable
+          onPress={handleSwitchUser}
+          accessibilityRole="button"
+          accessibilityLabel="Switch user or sign out"
+          style={({ pressed }) => [
+            styles.navItem,
+            !showLabels && styles.navItemIconOnly,
+            pressed && styles.navItemPressed,
+            styles.navItemLogout,
+          ]}
+        >
+          <LogOut size={20} color={colors.danger} strokeWidth={2} />
+          {showLabels ? (
+            <Text style={[styles.navLabel, styles.navLabelLogout]}>Switch</Text>
+          ) : null}
+        </Pressable>
       </View>
     </View>
   );
@@ -85,13 +119,17 @@ function FloatingNavBar({ userRole }: { userRole: Role }) {
 
 export default function AppLayout() {
   const user = useAuthStore((state) => state.user);
+  const hydrated = useAuthStore((state) => state.hydrated);
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
-    if (user && !canRoleAccess(user.role, pathname)) router.replace('/settings');
-  }, [pathname, router, user]);
+    if (hydrated && user && !canRoleAccess(user.role, pathname)) router.replace('/settings');
+  }, [hydrated, pathname, router, user]);
 
+  // While restoring the session, render nothing (AuthProvider already shows
+  // a splash). Once hydrated, unauthenticated users are always bounced to login.
+  if (!hydrated) return null;
   if (!user) return <Redirect href="/login" />;
 
   return (
@@ -194,6 +232,14 @@ const styles = StyleSheet.create({
   },
   navLabelActive: {
     color: colors.ink,
+    fontWeight: '600',
+  },
+  navItemLogout: {
+    marginLeft: spacing.xs,
+    paddingHorizontal: spacing.lg,
+  },
+  navLabelLogout: {
+    color: colors.danger,
     fontWeight: '600',
   },
 });

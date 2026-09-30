@@ -7,6 +7,11 @@ const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
+// Demo role picker is opt-in only. Production builds must leave this unset/false
+// so the login screen is email + password only with no bypass.
+export const isDemoLoginEnabled =
+  process.env.EXPO_PUBLIC_ENABLE_DEMO_LOGIN?.trim().toLowerCase() === 'true';
+
 export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(supabaseUrl as string, supabaseAnonKey as string, {
       auth: {

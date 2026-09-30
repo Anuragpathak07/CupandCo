@@ -28,7 +28,7 @@ import { Screen } from '@/components/ui/Screen';
 import { SettingsGroup, SettingsRow } from '@/components/ui/SettingsGroup';
 import { useToast } from '@/components/ui/Toast';
 import { resetMockData } from '@/services/mockData';
-import { isSupabaseConfigured } from '@/services/supabase';
+import { isDemoLoginEnabled, isSupabaseConfigured } from '@/services/supabase';
 import { useRealtimeOrders } from '@/services/orders';
 import { useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -78,8 +78,17 @@ export default function SettingsScreen() {
     .toUpperCase();
   const currentRole = roleOptions.find((option) => option.role === user.role) ?? roleOptions[0];
   const isManagerOrOwner = user.role === 'MANAGER' || user.role === 'OWNER';
+  // Production: role preview exists only for local dev demo mode.
+  const canPreviewRoles = isDemoLoginEnabled && dataMode === 'mock' && !isSupabaseConfigured;
 
   const switchRole = async (role: Role) => {
+    // Role preview is a demo-workspace feature only. Real (Supabase) staff
+    // must not be able to hop roles without signing in.
+    if (!canPreviewRoles) {
+      showToast({ title: 'Role preview is demo-only', message: 'Sign in with a staff account for that role.', tone: 'error' });
+      setRolePickerOpen(false);
+      return;
+    }
     if (role === user.role && dataMode === 'mock') {
       setRolePickerOpen(false);
       return;
@@ -132,10 +141,10 @@ export default function SettingsScreen() {
         <SettingsGroup title="WORKSPACE">
           <SettingsRow
             label="Current role"
-            description="Controls navigation and available actions"
+            description={canPreviewRoles ? 'Controls navigation and available actions' : 'Assigned by your staff account'}
             value={currentRole.title}
             icon={<currentRole.icon size={17} color={colors.accentDark} />}
-            onPress={() => setRolePickerOpen(true)}
+            onPress={canPreviewRoles ? () => setRolePickerOpen(true) : undefined}
             last
           />
         </SettingsGroup>
@@ -200,16 +209,18 @@ export default function SettingsScreen() {
           />
         </SettingsGroup>
 
-        <SettingsGroup title="STAFF & PERMISSIONS">
-          <SettingsRow
-            label="Role access"
-            description="Preview another role in the demo workspace"
-            value={currentRole.title}
-            icon={<ShieldCheck size={17} color={colors.inkSecondary} />}
-            onPress={() => setRolePickerOpen(true)}
-            last
-          />
-        </SettingsGroup>
+        {canPreviewRoles ? (
+          <SettingsGroup title="STAFF & PERMISSIONS">
+            <SettingsRow
+              label="Role access"
+              description="Preview another role in the demo workspace"
+              value={currentRole.title}
+              icon={<ShieldCheck size={17} color={colors.inkSecondary} />}
+              onPress={() => setRolePickerOpen(true)}
+              last
+            />
+          </SettingsGroup>
+        ) : null}
 
         <SettingsGroup title="APPEARANCE">
           <SettingsRow

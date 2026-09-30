@@ -5,6 +5,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import {
   fetchUserProfile,
   getStoredSession,
+  isDemoLoginEnabled,
   isSupabaseConfigured,
   signInWithEmail,
   signOutSupabase,
@@ -47,11 +48,13 @@ interface AuthState {
   sessionToken: string | null;
   dataMode: DataMode;
   hydrated: boolean;
+  requireLogin: boolean;
   loginDemo: (role: Role) => Promise<void>;
   login: (email: string, password: string) => Promise<AppUser>;
   restoreSession: () => Promise<void>;
   logout: () => Promise<void>;
   setHydrated: (hydrated: boolean) => void;
+  setRequireLogin: (require: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -61,10 +64,13 @@ export const useAuthStore = create<AuthState>()(
       sessionToken: null,
       dataMode: isSupabaseConfigured ? 'supabase' : 'mock',
       hydrated: false,
+      requireLogin: true, // Default: require login every launch (shared iPad)
 
       loginDemo: async (role) => {
-        if (isSupabaseConfigured) {
-          void signOutSupabase().catch(() => undefined);
+        // Production safety: demo entry exists only for local development
+        // when EXPO_PUBLIC_ENABLE_DEMO_LOGIN=true. Never in production.
+        if (!isDemoLoginEnabled || isSupabaseConfigured) {
+          throw new Error('Demo access is disabled. Please sign in with your staff account.');
         }
         set({
           user: DEMO_USERS[role],
@@ -84,23 +90,47 @@ export const useAuthStore = create<AuthState>()(
       },
 
       restoreSession: async () => {
+        const { requireLogin } = useAuthStore.getState();
+        const fallbackMode: DataMode = isSupabaseConfigured ? 'supabase' : 'mock';
+
+        // Production: login is always required. Only a valid Supabase session
+        // restores a user. Anything else forces the login screen.
+        if (requireLogin) {
+          const session = await getStoredSession();
+          if (session) {
+            try {
+              const user = await fetchUserProfile(session.user.id, session.user.email ?? '');
+              set({ user, sessionToken: session.access_token, dataMode: 'supabase', hydrated: true });
+              return;
+            } catch (error) {
+              console.warn('Could not restore Supabase session:', error);
+            }
+          }
+          // No valid Supabase session - force login
+          set({ user: null, sessionToken: null, dataMode: fallbackMode, hydrated: true });
+          return;
+        }
+
+        // Original behavior: restore demo sessions
         try {
           const session = await getStoredSession();
           if (!session) {
             set((state) => ({
               sessionToken: null,
               dataMode: state.user ? 'mock' : isSupabaseConfigured ? 'supabase' : 'mock',
+              hydrated: true,
             }));
             return;
           }
           const user = await fetchUserProfile(session.user.id, session.user.email ?? '');
-          set({ user, sessionToken: session.access_token, dataMode: 'supabase' });
+          set({ user, sessionToken: session.access_token, dataMode: 'supabase', hydrated: true });
         } catch (error) {
           console.warn('Could not restore Supabase session:', error);
           set((state) => ({
             user: state.user?.id.startsWith('demo-') ? state.user : null,
             sessionToken: state.user?.id.startsWith('demo-') ? state.sessionToken : null,
             dataMode: state.user?.id.startsWith('demo-') ? 'mock' : isSupabaseConfigured ? 'supabase' : 'mock',
+            hydrated: true,
           }));
         }
       },
@@ -116,14 +146,17 @@ export const useAuthStore = create<AuthState>()(
       },
 
       setHydrated: (hydrated) => set({ hydrated }),
+      setRequireLogin: (requireLogin) => set({ requireLogin }),
     }),
     {
       name: 'cupandco-auth',
       storage: createJSONStorage(() => AsyncStorage),
+      // Only persist Supabase sessions and settings, NOT demo users
       partialize: (state) => ({
-        user: state.user,
-        sessionToken: state.sessionToken,
+        user: state.dataMode === 'supabase' ? state.user : null,
+        sessionToken: state.dataMode === 'supabase' ? state.sessionToken : null,
         dataMode: state.dataMode,
+        requireLogin: state.requireLogin,
       }),
       onRehydrateStorage: () => (state) => state?.setHydrated(true),
     },
