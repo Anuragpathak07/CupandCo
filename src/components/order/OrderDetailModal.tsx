@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock3, MessageSquareText, ReceiptText, Trash2, UserRound } from 'lucide-react-native';
+import { Banknote, CheckCircle2, Clock3, MessageSquareText, QrCode, ReceiptText, Trash2, UserRound } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { StatusBadge } from '@/components/ui/Badge';
@@ -8,7 +8,7 @@ import { colors, radii, spacing, typography } from '@/theme';
 import type { Order } from '@/types';
 import { formatDate, formatDuration, formatTime } from '@/utils/dates';
 import { formatCurrency } from '@/utils/formatters';
-import { getOrderItemCount, getOrderSubtotal } from '@/utils/orders';
+import { getOrderItemCount, getOrderSubtotal, getPaymentMethodLabel } from '@/utils/orders';
 
 interface OrderDetailModalProps {
   order: Order | null;
@@ -61,6 +61,12 @@ export function OrderDetailModal({ order, onClose, canDelete = false, deleting =
               {order.completedAt ? <CheckCircle2 size={17} color={colors.completed} /> : <ReceiptText size={17} color={colors.progress} />}
               <View><Text style={styles.metaLabel}>{order.completedAt ? 'Prep time' : 'Current status'}</Text><Text style={styles.metaValue}>{order.completedAt ? formatDuration(prepSeconds) : order.status === 'IN_PROGRESS' ? 'In progress' : 'Waiting'}</Text></View>
             </View>
+            {order.paymentMethod ? (
+              <View style={styles.metaCard}>
+                {order.paymentMethod === 'CASH' ? <Banknote size={17} color={colors.accentDark} /> : <QrCode size={17} color={colors.accentDark} />}
+                <View><Text style={styles.metaLabel}>Paid by</Text><Text style={styles.metaValue}>{getPaymentMethodLabel(order.paymentMethod)}</Text></View>
+              </View>
+            ) : null}
           </View>
 
           <View style={styles.itemsCard}>
@@ -101,6 +107,7 @@ export function OrderDetailModal({ order, onClose, canDelete = false, deleting =
             <Text style={styles.timelineText}>Placed at {formatTime(order.createdAt)}</Text>
             {order.startedAt ? <Text style={styles.timelineText}>Started at {formatTime(order.startedAt)}</Text> : null}
             {order.completedAt ? <Text style={styles.timelineText}>Completed at {formatTime(order.completedAt)}</Text> : null}
+            {order.paymentMethod ? <Text style={styles.timelineText}>Paid by {getPaymentMethodLabel(order.paymentMethod)}</Text> : null}
           </View>
         </View>
       ) : null}

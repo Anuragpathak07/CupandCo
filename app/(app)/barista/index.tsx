@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { CheckCircle2, Plus } from 'lucide-react-native';
+import { Banknote, CheckCircle2, Plus, QrCode } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ActiveOrderCard } from '@/components/order/ActiveOrderCard';
@@ -21,8 +21,9 @@ import {
 } from '@/services/orders';
 import { useAuthStore } from '@/store/authStore';
 import { colors, radii, shadows, spacing, typography } from '@/theme';
-import type { Order } from '@/types';
-import { pluralize } from '@/utils/formatters';
+import type { Order, PaymentMethod } from '@/types';
+import { formatCurrency, pluralize } from '@/utils/formatters';
+import { getOrderSubtotal } from '@/utils/orders';
 import { triggerHaptic } from '@/utils/haptics';
 
 export default function BaristaQueueScreen() {
@@ -35,6 +36,8 @@ export default function BaristaQueueScreen() {
   const startOrder = useStartOrderMutation();
   const cancelOrder = useCancelOrderMutation();
   const [cancelTarget, setCancelTarget] = useState<Order | null>(null);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [completeTarget, setCompleteTarget] = useState<Order | null>(null);
 
   const queue = useMemo(
     () =>
@@ -48,10 +51,9 @@ export default function BaristaQueueScreen() {
   const visibleUpcoming = upcoming.slice(0, 3);
   const hiddenCount = Math.max(0, upcoming.length - visibleUpcoming.length);
 
-  const handleStart = async () => {
-    if (!activeOrder) return;
+  const handleStart = async (target: Order) => {
     try {
-      await startOrder.mutateAsync(activeOrder.id);
+      await startOrder.mutateAsync(target.id);
       await triggerHaptic('selection');
     } catch (caught) {
       showToast({ title: 'Could not start order', message: getErrorMessage(caught), tone: 'error' });
@@ -59,13 +61,14 @@ export default function BaristaQueueScreen() {
     }
   };
 
-  const handleDone = async () => {
-    if (!activeOrder) return;
-    const number = activeOrder.orderNumber;
+  const handleDone = async (target: Order, paymentMethod: PaymentMethod) => {
+    const number = target.orderNumber;
     try {
-      await completeOrder.mutateAsync(activeOrder.id);
+      await completeOrder.mutateAsync({ id: target.id, paymentMethod });
+      if (expandedOrderId === target.id) setExpandedOrderId(null);
+      setCompleteTarget(null);
       await triggerHaptic('success');
-      showToast({ title: `Order #${number} complete` });
+      showToast({ title: `Order #${number} complete · paid by ${paymentMethod === 'CASH' ? 'cash' : 'UPI'}` });
     } catch (caught) {
       showToast({ title: 'Could not complete order', message: getErrorMessage(caught), tone: 'error' });
       void triggerHaptic('error');
@@ -77,6 +80,7 @@ export default function BaristaQueueScreen() {
     try {
       await cancelOrder.mutateAsync(cancelTarget.id);
       showToast({ title: `Order #${cancelTarget.orderNumber} cancelled` });
+      if (expandedOrderId === cancelTarget.id) setExpandedOrderId(null);
       setCancelTarget(null);
     } catch (caught) {
       showToast({ title: 'Could not cancel order', message: getErrorMessage(caught), tone: 'error' });
@@ -129,11 +133,11 @@ export default function BaristaQueueScreen() {
           <ActiveOrderCard
             key={activeOrder.id}
             order={activeOrder}
-            completing={completeOrder.isPending}
-            starting={startOrder.isPending}
-            cancelling={cancelOrder.isPending}
-            onDone={() => void handleDone()}
-            onStart={() => void handleStart()}
+            completing={completeOrder.isPending && completeOrder.variables?.id === activeOrder.id}
+            starting={startOrder.isPending && startOrder.variables === activeOrder.id}
+            cancelling={cancelOrder.isPending && cancelTarget?.id === activeOrder.id}
+            onDone={() => setCompleteTarget(activeOrder)}
+            onStart={() => void handleStart(activeOrder)}
             onCancel={role === 'BARISTA' ? undefined : () => setCancelTarget(activeOrder)}
           />
 
@@ -145,7 +149,18 @@ export default function BaristaQueueScreen() {
               </View>
               <View style={styles.ticketList}>
                 {visibleUpcoming.map((order) => (
-                  <UpcomingOrderRow key={order.id} order={order} />
+                  <UpcomingOrderRow
+                    key={order.id}
+                    order={order}
+                    expanded={expandedOrderId === order.id}
+                    onToggle={() => setExpandedOrderId((current) => (current === order.id ? null : order.id))}
+                    completing={completeOrder.isPending && completeOrder.variables?.id === order.id}
+                    starting={startOrder.isPending && startOrder.variables === order.id}
+                    cancelling={cancelOrder.isPending && cancelTarget?.id === order.id}
+                    onDone={() => setCompleteTarget(order)}
+                    onStart={() => void handleStart(order)}
+                    onCancel={role === 'BARISTA' ? undefined : () => setCancelTarget(order)}
+                  />
                 ))}
               </View>
               {hiddenCount > 0 ? <Text style={styles.moreText}>+{hiddenCount} more waiting</Text> : null}
@@ -175,6 +190,37 @@ export default function BaristaQueueScreen() {
         )}
       >
         <Text style={styles.confirmCopy}>This does not change completed orders or revenue.</Text>
+      </SheetModal>
+
+      <SheetModal
+        visible={Boolean(completeTarget)}
+        onClose={() => setCompleteTarget(null)}
+        title={`Order #${completeTarget?.orderNumber ?? ''} done?`}
+        subtitle={completeTarget ? `${formatCurrency(getOrderSubtotal(completeTarget))} · how was it paid?` : undefined}
+        variant="center"
+        scroll={false}
+        footer={(
+          <View style={styles.confirmActions}>
+            <Button
+              title="Cash"
+              variant="secondary"
+              loading={completeOrder.isPending}
+              onPress={() => completeTarget && void handleDone(completeTarget, 'CASH')}
+              icon={<Banknote size={16} color={colors.ink} />}
+              style={styles.confirmButton}
+            />
+            <Button
+              title="UPI"
+              variant="dark"
+              loading={completeOrder.isPending}
+              onPress={() => completeTarget && void handleDone(completeTarget, 'UPI')}
+              icon={<QrCode size={16} color={colors.white} />}
+              style={styles.confirmButton}
+            />
+          </View>
+        )}
+      >
+        <Text style={styles.confirmCopy}>This records the payment method so history shows cash vs UPI.</Text>
       </SheetModal>
     </Screen>
   );

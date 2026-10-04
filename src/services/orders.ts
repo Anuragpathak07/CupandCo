@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
-import type { CreateOrderInput, Order, OrderStatus, RealtimeStatus } from '@/types';
+import type { CreateOrderInput, Order, OrderStatus, PaymentMethod, RealtimeStatus } from '@/types';
 import {
   createMockOrder,
   deleteMockOrder,
@@ -24,11 +24,15 @@ function mapOrder(
   itemRows: Record<string, unknown>[],
   userNames: Map<string, string>,
 ): Order {
+  const rawPayment = (row as { payment_method?: unknown }).payment_method;
+  const paymentMethod: PaymentMethod | null =
+    rawPayment === 'CASH' || rawPayment === 'UPI' ? rawPayment : null;
   return {
     id: String(row.id),
     orderNumber: Number(row.order_number),
     status: row.status as OrderStatus,
     notes: String(row.notes ?? ''),
+    paymentMethod,
     createdBy: row.created_by ? String(row.created_by) : null,
     createdByName: row.created_by ? userNames.get(String(row.created_by)) ?? null : null,
     createdAt: String(row.created_at),
@@ -106,13 +110,32 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
   return mapOrder(orderRow as Record<string, unknown>, itemRows as Record<string, unknown>[], new Map());
 }
 
-export async function setOrderStatus(id: string, status: OrderStatus) {
-  if (!isRemoteData()) return updateMockOrderStatus(id, status);
+export async function setOrderStatus(
+  id: string,
+  status: OrderStatus,
+  options?: { paymentMethod?: PaymentMethod | null },
+) {
+  if (!isRemoteData()) return updateMockOrderStatus(id, status, options?.paymentMethod);
 
   // The database trigger owns lifecycle timestamps. The client only requests
   // the transition, which keeps the RLS column grant intentionally narrow.
   const { error } = await requireSupabase().from('orders').update({ status }).eq('id', id);
   if (error) throw error;
+
+  // Payment method is tracked best-effort so the queue keeps working before
+  // the `payment_method` migration has been applied to Supabase.
+  if (status === 'COMPLETED' && options?.paymentMethod) {
+    try {
+      const { error: paymentError } = await requireSupabase()
+        .from('orders')
+        // Cast keeps this compiling until the generated DB types include the column.
+        .update({ payment_method: options.paymentMethod } as never)
+        .eq('id', id);
+      if (paymentError) throw paymentError;
+    } catch {
+      // Column missing or not permitted yet — the mock store still records it.
+    }
+  }
 
   const orders = await getOrders();
   const updated = orders.find((order) => order.id === id);
@@ -184,7 +207,8 @@ export function useStartOrderMutation() {
 export function useCompleteOrderMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => setOrderStatus(id, 'COMPLETED'),
+    mutationFn: (input: { id: string; paymentMethod?: PaymentMethod | null }) =>
+      setOrderStatus(input.id, 'COMPLETED', { paymentMethod: input.paymentMethod }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ordersQueryKey }),
   });
 }

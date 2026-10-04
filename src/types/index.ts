@@ -9,6 +9,9 @@ export const ORDER_STATUSES = [
 ] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
+export const PAYMENT_METHODS = ['CASH', 'UPI'] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
 export type DataMode = 'mock' | 'supabase';
 export type RealtimeStatus = 'connecting' | 'live' | 'offline';
 
@@ -56,6 +59,7 @@ export interface Order {
   orderNumber: number;
   status: OrderStatus;
   notes: string;
+  paymentMethod: PaymentMethod | null;
   createdBy: string | null;
   createdByName?: string | null;
   createdAt: string;
@@ -207,6 +211,7 @@ export interface Database {
           order_number: number;
           status: OrderStatus;
           notes: string;
+          payment_method: PaymentMethod | null;
           created_by: string | null;
           created_at: string;
           updated_at: string;
@@ -218,6 +223,7 @@ export interface Database {
           order_number?: number;
           status?: OrderStatus;
           notes?: string;
+          payment_method?: PaymentMethod | null;
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;

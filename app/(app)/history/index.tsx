@@ -20,7 +20,7 @@ import type { Order, OrderStatus } from '@/types';
 import { formatTime, toDateKey } from '@/utils/dates';
 import { formatCurrency, pluralize } from '@/utils/formatters';
 import { triggerHaptic } from '@/utils/haptics';
-import { getOrderItemCount, getOrderSubtotal } from '@/utils/orders';
+import { getOrderItemCount, getOrderSubtotal, getPaymentMethodLabel } from '@/utils/orders';
 
 type DatePreset = 'today' | 'date';
 type StatusFilter = 'ALL' | OrderStatus;
@@ -244,6 +244,9 @@ export default function OrderHistoryScreen() {
                   </View>
                   <View style={styles.ticketAmountBlock}>
                     <Text style={styles.ticketAmount}>{formatCurrency(getOrderSubtotal(order))}</Text>
+                    {order.paymentMethod ? (
+                      <Text style={styles.ticketPayment}>{getPaymentMethodLabel(order.paymentMethod)}</Text>
+                    ) : null}
                     <Text style={styles.ticketItems}>{pluralize(itemCount, 'item')}</Text>
                   </View>
                   <ChevronRight size={16} color={colors.inkTertiary} />
@@ -401,6 +404,7 @@ const styles = StyleSheet.create({
   ticketMeta: { ...typography.caption, color: colors.inkTertiary },
   ticketAmountBlock: { alignItems: 'flex-end', gap: 2 },
   ticketAmount: { ...typography.body, fontWeight: '700', color: colors.ink, fontVariant: ['tabular-nums'] },
+  ticketPayment: { ...typography.caption, color: colors.accentDark, fontWeight: '600' },
   ticketItems: { ...typography.caption, color: colors.inkTertiary },
   filterContent: { gap: spacing.xl },
   filterSection: { gap: spacing.sm },

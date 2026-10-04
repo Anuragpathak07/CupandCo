@@ -1,4 +1,4 @@
-import type { MenuCategory, MenuItem, Order, OrderItem, OrderStatus, RealtimeStatus } from '@/types';
+import type { MenuCategory, MenuItem, Order, OrderItem, OrderStatus, PaymentMethod, RealtimeStatus } from '@/types';
 import { addedMenuCategories, addedMenuItems } from './menuAdditions';
 
 const categoriesSeed: MenuCategory[] = [
@@ -160,6 +160,7 @@ function makeOrder(
   completedAt: string | null,
   notes: string,
   items: OrderItem[],
+  paymentMethod: PaymentMethod | null = null,
 ): Order {
   return {
     id,
@@ -171,6 +172,7 @@ function makeOrder(
     startedAt,
     completedAt,
     notes,
+    paymentMethod,
     items: items.map((item) => ({ ...item, orderId: id })),
   };
 }
@@ -178,9 +180,9 @@ function makeOrder(
 const yesterday = new Date(now - 24 * 60 * 60_000);
 const ordersSeed: Order[] = [
   makeOrder('order-1048', 1048, 'COMPLETED', 'demo-cashier', 'Maya Chen', minutesAgo(92), minutesAgo(91), minutesAgo(86), '',
-    [makeItem('oi-1048-1', 'order-1048', 'item-cappuccino', 1, 'Extra foam'), makeItem('oi-1048-2', 'order-1048', 'item-sizzling-brownie', 1)]),
+    [makeItem('oi-1048-1', 'order-1048', 'item-cappuccino', 1, 'Extra foam'), makeItem('oi-1048-2', 'order-1048', 'item-sizzling-brownie', 1)], 'CASH'),
   makeOrder('order-1047', 1047, 'COMPLETED', 'demo-cashier', 'Maya Chen', minutesAgo(68), minutesAgo(67), minutesAgo(62), 'For pickup',
-    [makeItem('oi-1047-1', 'order-1047', 'item-classic-iced-latte', 2, 'One oat, one whole milk')]),
+    [makeItem('oi-1047-1', 'order-1047', 'item-classic-iced-latte', 2, 'One oat, one whole milk')], 'UPI'),
   makeOrder('order-1046', 1046, 'IN_PROGRESS', 'demo-cashier', 'Maya Chen', minutesAgo(43), minutesAgo(37), null, '',
     [makeItem('oi-1046-1', 'order-1046', 'item-straight-up-cold-brew', 1), makeItem('oi-1046-2', 'order-1046', 'item-oreo-mud-sundae', 2)]),
   makeOrder('order-1045', 1045, 'PENDING', 'demo-cashier', 'Maya Chen', minutesAgo(25), null, null, 'Oat milk, please',
@@ -188,7 +190,7 @@ const ordersSeed: Order[] = [
   makeOrder('order-1044', 1044, 'PENDING', 'demo-cashier', 'Maya Chen', minutesAgo(11), null, null, '',
     [makeItem('oi-1044-1', 'order-1044', 'item-iced-spanish', 1)]),
   makeOrder('order-1043', 1043, 'COMPLETED', 'demo-cashier', 'Noah Patel', minutesFrom(yesterday, 9 * 60 + 12), minutesFrom(yesterday, 9 * 60 + 13), minutesFrom(yesterday, 9 * 60 + 18), 'Dine in',
-    [makeItem('oi-1043-1', 'order-1043', 'item-nutella-brownie-sundae', 1), makeItem('oi-1043-2', 'order-1043', 'item-green-tea', 1)]),
+    [makeItem('oi-1043-1', 'order-1043', 'item-nutella-brownie-sundae', 1), makeItem('oi-1043-2', 'order-1043', 'item-green-tea', 1)], 'CASH'),
   makeOrder('order-1042', 1042, 'CANCELLED', 'demo-cashier', 'Noah Patel', minutesFrom(yesterday, 8 * 60 + 40), null, null, 'Guest changed their mind',
     [makeItem('oi-1042-1', 'order-1042', 'item-classic-hot-choc', 1)]),
 ];
@@ -254,6 +256,7 @@ export async function createMockOrder(input: {
     orderNumber: nextOrderNumber++,
     status: 'PENDING',
     notes: input.notes.trim(),
+    paymentMethod: null,
     createdBy: input.createdBy,
     createdByName: input.createdBy === 'demo-cashier' ? 'Maya Chen' : 'Guest checkout',
     createdAt,
@@ -274,7 +277,7 @@ export async function createMockOrder(input: {
   return clone(order);
 }
 
-export async function updateMockOrderStatus(id: string, status: OrderStatus) {
+export async function updateMockOrderStatus(id: string, status: OrderStatus, paymentMethod?: PaymentMethod | null) {
   await delay();
   const timestamp = new Date().toISOString();
   let found = false;
@@ -284,6 +287,7 @@ export async function updateMockOrderStatus(id: string, status: OrderStatus) {
     return {
       ...order,
       status,
+      paymentMethod: status === 'COMPLETED' ? (paymentMethod ?? order.paymentMethod) : order.paymentMethod,
       startedAt: status === 'IN_PROGRESS' ? order.startedAt ?? timestamp : order.startedAt,
       completedAt: status === 'COMPLETED' ? timestamp : status === 'CANCELLED' ? null : order.completedAt,
     };
