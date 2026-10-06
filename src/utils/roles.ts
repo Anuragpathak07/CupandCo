@@ -13,10 +13,10 @@ export function defaultRouteForRole(role: Role) {
 }
 
 const ROUTE_ACCESS: Record<Role, string[]> = {
-  BARISTA: ['/cashier', '/barista', '/history', '/settings'],
-  CASHIER: ['/cashier', '/barista', '/history', '/settings'],
-  MANAGER: ['/barista', '/cashier', '/menu', '/analytics', '/history', '/settings'],
-  OWNER: ['/barista', '/cashier', '/menu', '/analytics', '/history', '/settings'],
+  BARISTA: ['/cashier', '/barista', '/history', '/inventory', '/settings'],
+  CASHIER: ['/cashier', '/barista', '/history', '/inventory', '/settings'],
+  MANAGER: ['/barista', '/cashier', '/menu', '/analytics', '/history', '/inventory', '/settings'],
+  OWNER: ['/barista', '/cashier', '/menu', '/analytics', '/history', '/inventory', '/settings'],
 };
 
 export function canRoleAccess(role: Role, pathname: string) {

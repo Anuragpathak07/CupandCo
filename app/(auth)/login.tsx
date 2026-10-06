@@ -276,7 +276,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   inputWrapFocused: { borderColor: colors.ink },
-  input: { ...typography.body, flex: 1, color: colors.ink, paddingVertical: 0, fontSize: 15 },
+  input: {
+    ...typography.body,
+    flex: 1,
+    color: colors.ink,
+    paddingVertical: 0,
+    fontSize: 15,
+    // Web renders TextInput as <input> with a native focus outline — suppress
+    // it there so only the wrapper's own focus ring shows.
+    ...(Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null),
+  },
   eye: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
   eyePressed: { opacity: 0.55 },
   configNote: { ...typography.footnote, color: colors.pendingText, textAlign: 'center', lineHeight: 18 },

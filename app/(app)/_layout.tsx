@@ -4,6 +4,7 @@ import {
   BarChart3,
   ClipboardList,
   History,
+  Package,
   Settings,
   ShoppingBag,
   UtensilsCrossed,
@@ -33,6 +34,7 @@ const tabs: TabConfig[] = [
   { name: 'menu', label: 'Menu', icon: UtensilsCrossed, roles: ['MANAGER', 'OWNER'] },
   { name: 'analytics', label: 'Insights', icon: BarChart3, roles: ['MANAGER', 'OWNER'] },
   { name: 'history', label: 'History', icon: History, roles: ['BARISTA', 'CASHIER', 'MANAGER', 'OWNER'] },
+  { name: 'inventory', label: 'Inventory', icon: Package, roles: ['BARISTA', 'CASHIER', 'MANAGER', 'OWNER'] },
   { name: 'settings', label: 'Settings', icon: Settings, roles: ['BARISTA', 'CASHIER', 'MANAGER', 'OWNER'] },
 ];
 

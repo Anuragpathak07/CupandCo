@@ -88,6 +88,21 @@ export interface CartLine {
   notes: string;
 }
 
+export interface InventoryItem {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InventoryMutationInput {
+  name: string;
+  quantity: number;
+  unit: string;
+}
+
 export interface MenuMutationInput {
   categoryId: string;
   name: string;
@@ -257,6 +272,26 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database['public']['Tables']['order_items']['Insert']>;
+        Relationships: [];
+      };
+      inventory_items: {
+        Row: {
+          id: string;
+          name: string;
+          quantity: number;
+          unit: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          quantity?: number;
+          unit?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['inventory_items']['Insert']>;
         Relationships: [];
       };
     };

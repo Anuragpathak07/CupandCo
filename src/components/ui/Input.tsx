@@ -1,6 +1,7 @@
 import { forwardRef, useState, type ReactNode } from 'react';
 import { X } from 'lucide-react-native';
 import {
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -115,6 +116,9 @@ const styles = StyleSheet.create({
     flex: 1,
     color: colors.ink,
     paddingVertical: 0,
+    // Web renders TextInput as <input> with a native focus outline that shows
+    // as a black rectangle inside our own focus ring — suppress it there.
+    ...(Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null),
   },
   inputMultiline: {
     minHeight: 78,

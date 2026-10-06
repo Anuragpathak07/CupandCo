@@ -101,6 +101,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.overlay,
   },
   positioner: {
+    flex: 1,
     width: '100%',
     justifyContent: 'flex-end',
   },
@@ -113,7 +114,7 @@ const styles = StyleSheet.create({
   sheet: {
     width: '100%',
     maxWidth: 680,
-    maxHeight: '90%',
+    maxHeight: '94%',
     alignSelf: 'center',
     backgroundColor: colors.surface,
     borderTopLeftRadius: radii.xxl,
@@ -165,7 +166,9 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   body: {
-    flexGrow: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    minHeight: 0,
   },
   bodyContent: {
     paddingHorizontal: spacing.xl,

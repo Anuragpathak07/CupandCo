@@ -1,4 +1,4 @@
-import type { MenuCategory, MenuItem, Order, OrderItem, OrderStatus, PaymentMethod, RealtimeStatus } from '@/types';
+import type { InventoryItem, InventoryMutationInput, MenuCategory, MenuItem, Order, OrderItem, OrderStatus, PaymentMethod, RealtimeStatus } from '@/types';
 import { addedMenuCategories, addedMenuItems } from './menuAdditions';
 
 const categoriesSeed: MenuCategory[] = [
@@ -200,6 +200,16 @@ let menuItems = clone(menuItemsSeed);
 let orders = clone(ordersSeed);
 let nextOrderNumber = 1049;
 
+const inventorySeed: InventoryItem[] = [
+  { id: 'inv-milk', name: 'Milk', quantity: 12, unit: 'L', createdAt: '2025-01-01T08:00:00.000Z', updatedAt: '2025-01-01T08:00:00.000Z' },
+  { id: 'inv-espresso-beans', name: 'Espresso beans', quantity: 8, unit: 'kg', createdAt: '2025-01-01T08:00:00.000Z', updatedAt: '2025-01-01T08:00:00.000Z' },
+  { id: 'inv-sugar', name: 'Sugar', quantity: 5, unit: 'kg', createdAt: '2025-01-01T08:00:00.000Z', updatedAt: '2025-01-01T08:00:00.000Z' },
+  { id: 'inv-cups', name: 'Paper cups', quantity: 240, unit: 'pcs', createdAt: '2025-01-01T08:00:00.000Z', updatedAt: '2025-01-01T08:00:00.000Z' },
+  { id: 'inv-chocolate-syrup', name: 'Chocolate syrup', quantity: 3, unit: 'L', createdAt: '2025-01-01T08:00:00.000Z', updatedAt: '2025-01-01T08:00:00.000Z' },
+];
+
+let inventoryItems = clone(inventorySeed);
+
 const listeners = new Set<() => void>();
 
 function clone<T>(value: T): T {
@@ -376,10 +386,71 @@ export async function deleteMockOrder(id: string) {
   emitChange();
 }
 
+export async function getMockInventory() {
+  await delay();
+  return clone(inventoryItems).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function createMockInventoryItem(input: InventoryMutationInput) {
+  await delay();
+  const name = input.name.trim();
+  if (!name) throw new Error('Give the inventory item a name.');
+  if (inventoryItems.some((item) => item.name.toLowerCase() === name.toLowerCase())) {
+    throw new Error('An inventory item with this name already exists.');
+  }
+  const timestamp = new Date().toISOString();
+  const item: InventoryItem = {
+    id: createId('inventory-item'),
+    name,
+    quantity: Math.max(0, Math.floor(input.quantity)),
+    unit: input.unit.trim() || 'pcs',
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  inventoryItems = [...inventoryItems, item];
+  emitChange();
+  return clone(item);
+}
+
+export async function updateMockInventoryItem(id: string, input: Partial<InventoryMutationInput>) {
+  await delay();
+  const existing = inventoryItems.find((item) => item.id === id);
+  if (!existing) throw new Error('Inventory item not found.');
+  const name = input.name !== undefined ? input.name.trim() : existing.name;
+  if (!name) throw new Error('Give the inventory item a name.');
+  if (
+    input.name !== undefined &&
+    inventoryItems.some((item) => item.id !== id && item.name.toLowerCase() === name.toLowerCase())
+  ) {
+    throw new Error('An inventory item with this name already exists.');
+  }
+  inventoryItems = inventoryItems.map((item) =>
+    item.id === id
+      ? {
+        ...item,
+        name,
+        quantity: input.quantity !== undefined ? Math.max(0, Math.floor(input.quantity)) : item.quantity,
+        unit: input.unit !== undefined ? input.unit.trim() || item.unit : item.unit,
+        updatedAt: new Date().toISOString(),
+      }
+      : item,
+  );
+  emitChange();
+  return clone(inventoryItems.find((item) => item.id === id) as InventoryItem);
+}
+
+export async function deleteMockInventoryItem(id: string) {
+  await delay();
+  if (!inventoryItems.some((item) => item.id === id)) throw new Error('Inventory item not found.');
+  inventoryItems = inventoryItems.filter((item) => item.id !== id);
+  emitChange();
+}
+
 export function resetMockData() {
   categories = clone(categoriesSeed);
   menuItems = clone(menuItemsSeed);
   orders = clone(ordersSeed);
   nextOrderNumber = 1049;
+  inventoryItems = clone(inventorySeed);
   emitChange();
 }

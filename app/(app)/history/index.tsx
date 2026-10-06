@@ -17,15 +17,25 @@ import { useDeleteOrderMutation, useOrdersQuery } from '@/services/orders';
 import { useAuthStore } from '@/store/authStore';
 import { colors, radii, shadows, spacing, typography } from '@/theme';
 import type { Order, OrderStatus } from '@/types';
-import { formatTime, toDateKey } from '@/utils/dates';
+import {
+  addDays,
+  addMonths,
+  endOfMonth,
+  formatDate,
+  formatTime,
+  startOfMonth,
+  startOfWeek,
+  toDateKey,
+} from '@/utils/dates';
 import { formatCurrency, pluralize } from '@/utils/formatters';
 import { triggerHaptic } from '@/utils/haptics';
 import { getOrderItemCount, getOrderSubtotal, getPaymentMethodLabel } from '@/utils/orders';
 
-type DatePreset = 'today' | 'date';
+type DatePreset = 'today' | 'yesterday' | 'week' | 'month' | 'lastMonth' | 'custom';
 type StatusFilter = 'ALL' | OrderStatus;
 
-const INITIAL_TODAY_KEY = toDateKey(new Date());
+const shortDay = (date: Date) => formatDate(date, { day: 'numeric', month: 'short' });
+const shortMonth = (date: Date) => formatDate(date, { month: 'short' });
 const quickStatuses: StatusFilter[] = ['ALL', 'PENDING', 'IN_PROGRESS', 'COMPLETED'];
 const allStatuses: StatusFilter[] = ['ALL', 'PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
 
@@ -43,24 +53,63 @@ export default function OrderHistoryScreen() {
   const user = useAuthStore((state) => state.user);
   const deleteOrder = useDeleteOrderMutation();
   const canDelete = user?.role === 'OWNER';
-  const [datePreset, setDatePreset] = useState<DatePreset>('today');
+  const now = useMemo(() => new Date(), []);
+  const todayKey = toDateKey(now);
+  const [preset, setPreset] = useState<DatePreset>('today');
   const [status, setStatus] = useState<StatusFilter>('ALL');
   const [search, setSearch] = useState('');
-  const [customRange, setCustomRange] = useState({ start: INITIAL_TODAY_KEY, end: INITIAL_TODAY_KEY });
+  const [customRange, setCustomRange] = useState({ start: todayKey, end: todayKey });
   const [filterOpen, setFilterOpen] = useState(false);
+  const [presetDraft, setPresetDraft] = useState<DatePreset>('today');
   const [rangeDraft, setRangeDraft] = useState(customRange);
   const [statusDraft, setStatusDraft] = useState<StatusFilter>('ALL');
   const [rangeError, setRangeError] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Order | null>(null);
 
+  const range = useMemo(() => {
+    switch (preset) {
+      case 'yesterday': {
+        const key = toDateKey(addDays(now, -1));
+        return { start: key, end: key };
+      }
+      case 'week':
+        return { start: toDateKey(startOfWeek(now)), end: todayKey };
+      case 'month':
+        return { start: toDateKey(startOfMonth(now)), end: todayKey };
+      case 'lastMonth': {
+        const start = addMonths(now, -1);
+        const end = endOfMonth(start);
+        return { start: toDateKey(start), end: toDateKey(end) };
+      }
+      case 'custom':
+        return { start: customRange.start, end: customRange.end };
+      default:
+        return { start: todayKey, end: todayKey };
+    }
+  }, [customRange.end, customRange.start, now, preset, todayKey]);
+
+  const dateOptions = useMemo(
+    () => [
+      { value: 'today' as DatePreset, label: `Today, ${shortDay(now)}` },
+      { value: 'yesterday' as DatePreset, label: `Yesterday, ${shortDay(addDays(now, -1))}` },
+      {
+        value: 'week' as DatePreset,
+        label: `This week, ${shortDay(startOfWeek(now))}–${shortDay(now)}`,
+      },
+      { value: 'month' as DatePreset, label: `This month, ${shortMonth(now)}` },
+      { value: 'lastMonth' as DatePreset, label: `Last month, ${shortMonth(addMonths(now, -1))}` },
+      { value: 'custom' as DatePreset, label: 'Custom' },
+    ],
+    [now],
+  );
+
   const dateMatches = useCallback(
     (order: Order) => {
-      if (datePreset === 'today') return toDateKey(order.createdAt) === INITIAL_TODAY_KEY;
       const key = toDateKey(order.createdAt);
-      return key >= customRange.start && key <= customRange.end;
+      return key >= range.start && key <= range.end;
     },
-    [customRange.end, customRange.start, datePreset],
+    [range.end, range.start],
   );
 
   const filteredOrders = useMemo(() => {
@@ -80,9 +129,10 @@ export default function OrderHistoryScreen() {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }, [dateMatches, orders, search, status]);
 
-  const hasAdvancedFilters = datePreset === 'date' || status === 'CANCELLED';
+  const hasAdvancedFilters = preset !== 'today' || status === 'CANCELLED';
 
   const openFilters = () => {
+    setPresetDraft(preset);
     setRangeDraft(customRange);
     setStatusDraft(status);
     setRangeError('');
@@ -90,23 +140,26 @@ export default function OrderHistoryScreen() {
   };
 
   const applyFilters = () => {
-    const start = parseDateKey(rangeDraft.start);
-    const end = parseDateKey(rangeDraft.end);
-    if (!start || !end || start > end) {
-      setRangeError('Enter valid dates as YYYY-MM-DD with the start on or before the end.');
-      return;
+    if (presetDraft === 'custom') {
+      const start = parseDateKey(rangeDraft.start);
+      const end = parseDateKey(rangeDraft.end);
+      if (!start || !end || start > end) {
+        setRangeError('Enter valid dates as YYYY-MM-DD with the start on or before the end.');
+        return;
+      }
+      setCustomRange({ start: rangeDraft.start, end: rangeDraft.end });
     }
-    setCustomRange({ start: rangeDraft.start, end: rangeDraft.end });
+    setPreset(presetDraft);
     setStatus(statusDraft);
-    setDatePreset('date');
     setFilterOpen(false);
   };
 
   const resetFilters = () => {
-    setDatePreset('today');
+    setPreset('today');
+    setPresetDraft('today');
     setStatus('ALL');
-    setCustomRange({ start: INITIAL_TODAY_KEY, end: INITIAL_TODAY_KEY });
-    setRangeDraft({ start: INITIAL_TODAY_KEY, end: INITIAL_TODAY_KEY });
+    setCustomRange({ start: todayKey, end: todayKey });
+    setRangeDraft({ start: todayKey, end: todayKey });
     setStatusDraft('ALL');
     setRangeError('');
     setFilterOpen(false);
@@ -143,9 +196,12 @@ export default function OrderHistoryScreen() {
 
       <View style={styles.toolbar}>
         <View style={styles.topControlRow}>
-          <SegmentedControl<DatePreset>
-            value={datePreset}
-            onChange={setDatePreset}
+          <SegmentedControl<'today' | 'date'>
+            value={preset === 'today' ? 'today' : 'date'}
+            onChange={(mode) => {
+              if (mode === 'today') setPreset('today');
+              else openFilters();
+            }}
             segments={[
               { value: 'today', label: 'Today' },
               { value: 'date', label: 'Date' },
@@ -263,49 +319,86 @@ export default function OrderHistoryScreen() {
         title="Filters"
         subtitle="Choose a date range and order status."
         footer={(
-          <View style={styles.filterActions}>
-            <Button title="Reset" variant="secondary" onPress={resetFilters} style={styles.filterButton} />
-            <Button title="Apply filters" onPress={applyFilters} style={styles.filterButton} />
+          <View style={styles.filterFooter}>
+            <Button title="Reset" variant="secondary" onPress={resetFilters} fullWidth size="lg" />
+            <Button title="Apply filters" onPress={applyFilters} fullWidth size="lg" />
           </View>
         )}
       >
         <View style={styles.filterContent}>
           <View style={styles.filterSection}>
             <Text style={styles.filterLabel}>DATE RANGE</Text>
-            <View style={styles.dateInputs}>
-              <Input
-                label="Start"
-                value={rangeDraft.start}
-                onChangeText={(value) => setRangeDraft((draft) => ({ ...draft, start: value }))}
-                placeholder="YYYY-MM-DD"
-                autoCapitalize="none"
-                left={<CalendarDays size={16} color={colors.inkTertiary} />}
-                error={rangeError || undefined}
-              />
-              <Input
-                label="End"
-                value={rangeDraft.end}
-                onChangeText={(value) => setRangeDraft((draft) => ({ ...draft, end: value }))}
-                placeholder="YYYY-MM-DD"
-                autoCapitalize="none"
-                left={<CalendarDays size={16} color={colors.inkTertiary} />}
-              />
+            <View>
+              {dateOptions.map(({ value, label }, index) => {
+                const selected = presetDraft === value;
+                return (
+                  <Pressable
+                    key={value}
+                    onPress={() => setPresetDraft(value)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    style={({ pressed }) => [
+                      styles.optionRow,
+                      index < dateOptions.length - 1 && styles.optionDivider,
+                      pressed && styles.optionPressed,
+                    ]}
+                  >
+                    <View style={[styles.radio, selected && styles.radioSelected]}>
+                      {selected ? <View style={styles.radioDot} /> : null}
+                    </View>
+                    <Text style={[styles.optionLabel, selected && styles.optionLabelSelected]}>{label}</Text>
+                  </Pressable>
+                );
+              })}
             </View>
+            {presetDraft === 'custom' ? (
+              <View style={styles.dateInputs}>
+                <Input
+                  label="Start"
+                  value={rangeDraft.start}
+                  onChangeText={(value) => setRangeDraft((draft) => ({ ...draft, start: value }))}
+                  placeholder="YYYY-MM-DD"
+                  autoCapitalize="none"
+                  left={<CalendarDays size={16} color={colors.inkTertiary} />}
+                  error={rangeError || undefined}
+                />
+                <Input
+                  label="End"
+                  value={rangeDraft.end}
+                  onChangeText={(value) => setRangeDraft((draft) => ({ ...draft, end: value }))}
+                  placeholder="YYYY-MM-DD"
+                  autoCapitalize="none"
+                  left={<CalendarDays size={16} color={colors.inkTertiary} />}
+                />
+              </View>
+            ) : null}
           </View>
           <View style={styles.filterSection}>
             <Text style={styles.filterLabel}>STATUS</Text>
-            <View style={styles.advancedStatuses}>
-              {allStatuses.map((filter) => (
-                <Pressable
-                  key={filter}
-                  onPress={() => setStatusDraft(filter)}
-                  style={[styles.chip, statusDraft === filter && styles.chipSelected]}
-                >
-                  <Text style={[styles.chipText, statusDraft === filter && styles.chipTextSelected]}>
-                    {statusLabels[filter]}
-                  </Text>
-                </Pressable>
-              ))}
+            <View>
+              {allStatuses.map((filter, index) => {
+                const selected = statusDraft === filter;
+                return (
+                  <Pressable
+                    key={filter}
+                    onPress={() => setStatusDraft(filter)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    style={({ pressed }) => [
+                      styles.optionRow,
+                      index < allStatuses.length - 1 && styles.optionDivider,
+                      pressed && styles.optionPressed,
+                    ]}
+                  >
+                    <View style={[styles.radio, selected && styles.radioSelected]}>
+                      {selected ? <View style={styles.radioDot} /> : null}
+                    </View>
+                    <Text style={[styles.optionLabel, selected && styles.optionLabelSelected]}>
+                      {statusLabels[filter]}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
         </View>
@@ -409,10 +502,25 @@ const styles = StyleSheet.create({
   filterContent: { gap: spacing.xl },
   filterSection: { gap: spacing.sm },
   filterLabel: { ...typography.overline, color: colors.inkTertiary },
-  dateInputs: { gap: spacing.sm },
-  advancedStatuses: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  filterActions: { flexDirection: 'row', gap: spacing.sm },
-  filterButton: { flex: 1 },
+  dateInputs: { gap: spacing.sm, paddingTop: spacing.md },
+  optionRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm },
+  optionDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderSubtle },
+  optionPressed: { opacity: 0.6 },
+  radio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: colors.borderStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  radioSelected: { borderColor: colors.ink },
+  radioDot: { width: 11, height: 11, borderRadius: 6, backgroundColor: colors.ink },
+  optionLabel: { ...typography.body, color: colors.inkSecondary },
+  optionLabelSelected: { color: colors.ink, fontWeight: '600' },
+  filterFooter: { gap: spacing.sm },
   deleteActions: { flexDirection: 'row', gap: spacing.sm },
   flexButton: { flex: 1 },
   deleteCopy: { ...typography.body, color: colors.inkSecondary, paddingVertical: spacing.sm },
