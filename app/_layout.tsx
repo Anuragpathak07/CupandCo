@@ -10,6 +10,7 @@ import { AuthProvider } from '@/components/providers/AuthProvider';
 import { ToastProvider } from '@/components/ui/Toast';
 import { colors } from '@/theme';
 import { SWRegistration } from '@/components/pwa/SWRegistration';
+import { startSyncEngine } from '@/services/syncEngine';
 
 export default function RootLayout() {
   const [queryClient] = useState(
@@ -26,6 +27,12 @@ export default function RootLayout() {
         },
       }),
   );
+
+  // Start the offline sync engine on app boot.
+  // This replays any writes queued during a Supabase outage.
+  useEffect(() => {
+    void startSyncEngine();
+  }, []);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

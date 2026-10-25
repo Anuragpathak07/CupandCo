@@ -11,6 +11,14 @@ import {
   subscribeMockChanges,
   updateMockOrderStatus,
 } from './mockData';
+import {
+  loadLocalOrders,
+  loadQueue,
+  queueCreateOrder,
+  queueDeleteOrder,
+  queueSetStatus,
+} from './offlineQueue';
+import { addSyncListener, runSync, type SyncStatus } from './syncEngine';
 import { requireSupabase, supabase } from './supabase';
 
 export const ordersQueryKey = ['orders'] as const;
@@ -38,11 +46,9 @@ function mapOrder(
     createdAt: String(row.created_at),
     startedAt: row.started_at ? String(row.started_at) : null,
     completedAt: row.completed_at ? String(row.completed_at) : null,
-    items: itemRows
-      .filter((item) => String(item.order_id) === String(row.id))
-      .map((item) => ({
+    items: itemRows.map((item) => ({
         id: String(item.id),
-        orderId: String(item.order_id),
+        orderId: String(item.order_id ?? row.id),
         menuItemId: item.menu_item_id ? String(item.menu_item_id) : null,
         itemName: String(item.item_name),
         quantity: Number(item.quantity),
@@ -56,25 +62,54 @@ export async function getOrders(): Promise<Order[]> {
   if (!isRemoteData()) return getMockOrders();
 
   const client = requireSupabase();
-  const [orderResult, itemResult, userResult] = await Promise.all([
-    client.from('orders').select('*').order('created_at', { ascending: false }).limit(1000),
-    client.from('order_items').select('*').limit(5000),
-    client.from('users').select('id, name'),
-  ]);
-  if (orderResult.error) throw orderResult.error;
-  if (itemResult.error) throw itemResult.error;
-  if (userResult.error) throw userResult.error;
 
-  const userNames = new Map(
-    ((userResult.data ?? []) as Record<string, unknown>[]).map((user) => [
-      String(user.id),
-      String(user.name),
-    ]),
-  );
-  const items = itemResult.data as Record<string, unknown>[];
-  return (orderResult.data as Record<string, unknown>[]).map((row) =>
-    mapOrder(row, items, userNames),
-  );
+  // Merge any locally-queued (offline) orders into the result.
+  // These are optimistic records that haven't reached Supabase yet.
+  const localOrders = await loadLocalOrders();
+
+  let remoteOrders: Order[] = [];
+  try {
+    // KEY FIX: Use Supabase relational join (select '*, order_items(*)')
+    // instead of a separate flat query for order_items.
+    //
+    // The old flat query — .from('order_items').select('*').limit(5000) —
+    // was silently capped at Supabase's project-level max-rows setting
+    // (default: 1000). Once total order_items exceeded ~1000 rows, the
+    // newest items were dropped, making every new order show "0 items / ₹0".
+    //
+    // Embedded joins scope items per-order row, bypassing the global cap.
+    const [orderResult, userResult] = await Promise.all([
+      client
+        .from('orders')
+        .select('*, order_items(*)')
+        .order('created_at', { ascending: false })
+        .limit(1000),
+      client.from('users').select('id, name'),
+    ]);
+    if (orderResult.error) throw orderResult.error;
+    if (userResult.error) throw userResult.error;
+
+    const userNames = new Map(
+      ((userResult.data ?? []) as Record<string, unknown>[]).map((user) => [
+        String(user.id),
+        String(user.name),
+      ]),
+    );
+    remoteOrders = (orderResult.data as Record<string, unknown>[]).map((row) => {
+      // Supabase returns joined rows as an array under the foreign table name.
+      const nestedItems = (row.order_items as Record<string, unknown>[] | null) ?? [];
+      return mapOrder(row, nestedItems, userNames);
+    });
+  } catch (err) {
+    // Supabase unreachable — return local orders only so the UI doesn't crash.
+    console.warn('[Orders] Supabase fetch failed, serving local orders only:', err);
+    return localOrders.length > 0 ? localOrders : [];
+  }
+
+  // Prepend local orders that don't yet exist in Supabase (temp offline-* ids)
+  const remoteIds = new Set(remoteOrders.map((o) => o.id));
+  const pendingLocal = localOrders.filter((o) => !remoteIds.has(o.id));
+  return [...pendingLocal, ...remoteOrders];
 }
 
 export async function createOrder(input: CreateOrderInput): Promise<Order> {
@@ -82,32 +117,43 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
   if (!isRemoteData()) return createMockOrder(input);
 
   const client = requireSupabase();
-  const { data: orderRow, error: orderError } = await client
-    .from('orders')
-    .insert({ notes: input.notes.trim(), created_by: input.createdBy })
-    .select()
-    .single();
-  if (orderError || !orderRow) throw orderError ?? new Error('Could not create order.');
+  try {
+    const { data: orderRow, error: orderError } = await client
+      .from('orders')
+      .insert({ notes: input.notes.trim(), created_by: input.createdBy })
+      .select()
+      .single();
+    if (orderError || !orderRow) throw orderError ?? new Error('Could not create order.');
 
-  const { data: itemRows, error: itemsError } = await client
-    .from('order_items')
-    .insert(
-      input.items.map((item) => ({
-        order_id: orderRow.id,
-        menu_item_id: item.menuItemId,
-        item_name: item.itemName,
-        quantity: item.quantity,
-        unit_price: item.unitPrice,
-        notes: item.notes.trim(),
-      })),
-    )
-    .select();
-  if (itemsError) {
-    await client.from('orders').delete().eq('id', orderRow.id);
-    throw itemsError;
+    const { data: itemRows, error: itemsError } = await client
+      .from('order_items')
+      .insert(
+        input.items.map((item) => ({
+          order_id: orderRow.id,
+          menu_item_id: item.menuItemId,
+          item_name: item.itemName,
+          quantity: item.quantity,
+          unit_price: item.unitPrice,
+          notes: item.notes.trim(),
+        })),
+      )
+      .select();
+    if (itemsError) {
+      await client.from('orders').delete().eq('id', orderRow.id);
+      throw itemsError;
+    }
+
+    return mapOrder(orderRow as Record<string, unknown>, itemRows as Record<string, unknown>[], new Map());
+  } catch (err) {
+    // Supabase is down — store locally and queue for later sync.
+    console.warn('[Orders] createOrder offline, queuing locally:', err);
+    const existing = await getOrders().catch(() => []);
+    const maxOrderNum = existing.reduce((max, o) => Math.max(max, o.orderNumber), 16000);
+    const localOrder = await queueCreateOrder(input, maxOrderNum + 1);
+    // Trigger sync attempt in background
+    void runSync();
+    return localOrder;
   }
-
-  return mapOrder(orderRow as Record<string, unknown>, itemRows as Record<string, unknown>[], new Map());
 }
 
 export async function setOrderStatus(
@@ -117,30 +163,51 @@ export async function setOrderStatus(
 ) {
   if (!isRemoteData()) return updateMockOrderStatus(id, status, options?.paymentMethod);
 
-  // The database trigger owns lifecycle timestamps. The client only requests
-  // the transition, which keeps the RLS column grant intentionally narrow.
-  const { error } = await requireSupabase().from('orders').update({ status }).eq('id', id);
-  if (error) throw error;
-
-  // Payment method is tracked best-effort so the queue keeps working before
-  // the `payment_method` migration has been applied to Supabase.
-  if (status === 'COMPLETED' && options?.paymentMethod) {
-    try {
-      const { error: paymentError } = await requireSupabase()
-        .from('orders')
-        // Cast keeps this compiling until the generated DB types include the column.
-        .update({ payment_method: options.paymentMethod } as never)
-        .eq('id', id);
-      if (paymentError) throw paymentError;
-    } catch {
-      // Column missing or not permitted yet — the mock store still records it.
-    }
+  // If id is a local offline id, queue and return early.
+  if (id.startsWith('offline-')) {
+    await queueSetStatus(id, status, options?.paymentMethod);
+    void runSync();
+    const orders = await getOrders();
+    const updated = orders.find((order) => order.id === id);
+    if (!updated) throw new Error('Local order not found.');
+    return updated;
   }
 
-  const orders = await getOrders();
-  const updated = orders.find((order) => order.id === id);
-  if (!updated) throw new Error('Order not found after update.');
-  return updated;
+  try {
+    // The database trigger owns lifecycle timestamps. The client only requests
+    // the transition, which keeps the RLS column grant intentionally narrow.
+    const { error } = await requireSupabase().from('orders').update({ status }).eq('id', id);
+    if (error) throw error;
+
+    // Payment method is tracked best-effort so the queue keeps working before
+    // the `payment_method` migration has been applied to Supabase.
+    if (status === 'COMPLETED' && options?.paymentMethod) {
+      try {
+        const { error: paymentError } = await requireSupabase()
+          .from('orders')
+          // Cast keeps this compiling until the generated DB types include the column.
+          .update({ payment_method: options.paymentMethod } as never)
+          .eq('id', id);
+        if (paymentError) throw paymentError;
+      } catch {
+        // Column missing or not permitted yet — the mock store still records it.
+      }
+    }
+
+    const orders = await getOrders();
+    const updated = orders.find((order) => order.id === id);
+    if (!updated) throw new Error('Order not found after update.');
+    return updated;
+  } catch (err) {
+    // Supabase is down — queue the status change locally.
+    console.warn('[Orders] setOrderStatus offline, queuing locally:', err);
+    await queueSetStatus(id, status, options?.paymentMethod);
+    void runSync();
+    const orders = await getOrders();
+    const updated = orders.find((order) => order.id === id);
+    if (!updated) throw new Error('Order not found after queuing status update.');
+    return updated;
+  }
 }
 
 export function subscribeToOrderChanges(
@@ -224,10 +291,23 @@ export function useCancelOrderMutation() {
 export async function deleteOrder(id: string) {
   if (!isRemoteData()) return deleteMockOrder(id);
 
-  // Order lines cascade via FK (order_items.order_id ON DELETE CASCADE).
-  // RLS `orders_delete_manager` restricts this to owners/managers.
-  const { error } = await requireSupabase().from('orders').delete().eq('id', id);
-  if (error) throw error;
+  // Local-only offline order — just queue the delete
+  if (id.startsWith('offline-')) {
+    await queueDeleteOrder(id);
+    void runSync();
+    return;
+  }
+
+  try {
+    // Order lines cascade via FK (order_items.order_id ON DELETE CASCADE).
+    // RLS `orders_delete_manager` restricts this to owners/managers.
+    const { error } = await requireSupabase().from('orders').delete().eq('id', id);
+    if (error) throw error;
+  } catch (err) {
+    console.warn('[Orders] deleteOrder offline, queuing locally:', err);
+    await queueDeleteOrder(id);
+    void runSync();
+  }
 }
 
 export function useDeleteOrderMutation() {
@@ -254,4 +334,37 @@ export function useRealtimeOrders(): RealtimeStatus {
   }, [queryClient, realtimeEnabled]);
 
   return status;
+}
+
+/**
+ * Hook that exposes the offline sync status and number of pending queue entries.
+ * Use this to show a "Syncing…" / "Offline – X pending" banner in the UI.
+ */
+export function useOfflineSync() {
+  const queryClient = useQueryClient();
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    // Bootstrap count from storage
+    void loadQueue().then((q) => setPendingCount(q.length));
+
+    const unsub = addSyncListener((status, count) => {
+      setSyncStatus(status);
+      setPendingCount(count);
+      // When sync completes, refresh the orders list
+      if (status === 'idle' && count === 0) {
+        void queryClient.invalidateQueries({ queryKey: ordersQueryKey });
+      }
+    });
+    return unsub;
+  }, [queryClient]);
+
+  return { syncStatus, pendingCount };
+}
+
+/** Returns the number of orders sitting in the offline queue (for badge display). */
+export function useOfflinePendingCount(): number {
+  const { pendingCount } = useOfflineSync();
+  return pendingCount;
 }

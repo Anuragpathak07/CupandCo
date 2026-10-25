@@ -20,6 +20,7 @@ import { colors, radii, shadows, spacing, typography } from '@/theme';
 import type { Role } from '@/types';
 import { canRoleAccess, defaultRouteForRole } from '@/utils/roles';
 import { triggerHaptic } from '@/utils/haptics';
+import { OfflineBanner } from '@/components/ui/OfflineBanner';
 
 type TabConfig = {
   name: string;
@@ -136,6 +137,7 @@ export default function AppLayout() {
 
   return (
     <View style={styles.appWrapper}>
+      <OfflineBanner />
       <Tabs
         tabBar={(props) => <FloatingNavBar {...props} userRole={user.role} />}
         screenOptions={{
